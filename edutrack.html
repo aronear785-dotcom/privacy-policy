@@ -1,0 +1,3546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduTrack — دفتر التنقيط الرقمي</title>
+
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- PDF-Lib for PDF merging -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<!-- html2canvas for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL RESET & VARIABLES
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary: #1e3a8a;
+  --primary-light: #3b82f6;
+  --primary-soft: #dbeafe;
+  --primary-glow: rgba(59,130,246,0.25);
+  --secondary: #0f766e;
+  --secondary-light: #14b8a6;
+  --secondary-soft: #d1fae5;
+  --accent: #7c3aed;
+  --accent-light: #a78bfa;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow: 0 4px 24px rgba(30,58,138,0.10);
+  --shadow-lg: 0 12px 40px rgba(30,58,138,0.16);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-xl: 20px;
+
+  /* Category colors */
+  --excellent: #3b82f6;
+  --good: #22c55e;
+  --medium: #f59e0b;
+  --weak: #ef4444;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', 'Cairo', 'Noto Naskh Arabic', Tahoma, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(59,130,246,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(124,58,237,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(15,118,110,0.04) 0%, transparent 50%),
+    linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+  background-attachment: fixed;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════════════════════ */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── TOP NAV ─── */
+#topnav {
+  background: linear-gradient(135deg, rgba(30,58,138,0.97), rgba(37,99,235,0.95));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 64px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.08) inset;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.nav-logo {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.2s;
+}
+.nav-logo:hover { opacity: 0.9; }
+.nav-logo svg { 
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  transition: transform 0.3s var(--ease-spring);
+}
+.nav-logo:hover svg { transform: scale(1.05) rotate(-3deg); }
+
+.nav-tabs { display: flex; gap: 6px; }
+
+.nav-tab {
+  padding: 8px 20px;
+  border-radius: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  position: relative;
+}
+.nav-tab:hover { background: rgba(255,255,255,0.12); color: #fff; transform: translateY(-1px); }
+.nav-tab:active { transform: translateY(0); }
+.nav-tab.active { 
+  background: rgba(255,255,255,0.2); 
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 3px;
+}
+
+.nav-lang { display: flex; gap: 6px; }
+.lang-btn {
+  padding: 5px 12px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  font-family: inherit;
+}
+.lang-btn:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.5); transform: translateY(-1px); }
+.lang-btn:active { transform: translateY(0); }
+.lang-btn.active { background: rgba(255,255,255,0.22); color: #fff; border-color: rgba(255,255,255,0.6); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+/* ─── MAIN CONTENT ─── */
+#main { flex: 1; }
+
+/* ─── PAGES ─── */
+.page { display: none; }
+.page.active { display: block; animation: pageIn 0.4s var(--ease-out); }
+
+@keyframes pageIn { 
+  from { opacity: 0; transform: translateY(12px); } 
+  to { opacity: 1; transform: none; } 
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMMON COMPONENTS
+═══════════════════════════════════════════════════════════════ */
+.container { max-width: 1180px; margin: 0 auto; padding: 28px 24px 40px; }
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 24px;
+  margin-bottom: 20px;
+  transition: box-shadow 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+
+.card-sm { padding: 16px; }
+
+.hero-card {
+  border-radius: var(--radius-xl);
+  padding: 32px 32px 28px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 20px 60px rgba(30,58,138,0.18);
+}
+
+.hero-card::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  inset-inline-end: -80px;
+  top: -80px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+  pointer-events: none;
+}
+.hero-card::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  inset-inline-start: -60px;
+  bottom: -80px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%);
+  pointer-events: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  font-family: inherit;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+}
+.btn-primary { 
+  background: linear-gradient(135deg, var(--primary), #2563eb); 
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(30,58,138,0.25);
+}
+.btn-primary:hover:not(:disabled) { 
+  background: linear-gradient(135deg, #1e40af, #1d4ed8); 
+  box-shadow: 0 6px 20px rgba(30,58,138,0.35); 
+  transform: translateY(-2px); 
+}
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+.btn-success { 
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-light)); 
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(15,118,110,0.25);
+}
+.btn-success:hover:not(:disabled) { 
+  background: linear-gradient(135deg, #0d6a62, #0d9488); 
+  box-shadow: 0 6px 20px rgba(15,118,110,0.35); 
+  transform: translateY(-2px); 
+}
+.btn-success:active:not(:disabled) { transform: translateY(0); }
+
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; transform: translateY(-1px); }
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+.btn-outline:hover:not(:disabled) { background: var(--primary-soft); transform: translateY(-1px); }
+
+.btn-ghost { 
+  background: var(--bg); 
+  color: var(--text-muted); 
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover:not(:disabled) { 
+  background: var(--border); 
+  color: var(--text); 
+  transform: translateY(-1px); 
+}
+
+.btn-sm { padding: 7px 16px; font-size: 12px; border-radius: 8px; }
+.btn-lg { padding: 14px 32px; font-size: 15px; border-radius: 12px; }
+
+.input-group { margin-bottom: 16px; }
+.input-group label { 
+  display: block; 
+  font-size: 11px; 
+  font-weight: 700; 
+  color: var(--text-muted); 
+  margin-bottom: 6px; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px; 
+  transition: color 0.2s;
+}
+.input-group:focus-within label { color: var(--primary); }
+
+.input-group input, .input-group select {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card);
+  transition: all 0.25s var(--ease-out);
+  outline: none;
+}
+.input-group input:focus, .input-group select:focus { 
+  border-color: var(--primary-light); 
+  box-shadow: 0 0 0 4px var(--primary-glow); 
+}
+.input-group input::placeholder { color: #94a3b8; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: transform 0.2s var(--ease-out);
+}
+.badge:hover { transform: scale(1.05); }
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary-soft);
+}
+
+.spinner {
+  width: 20px; height: 20px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alert {
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: slideAlert 0.35s var(--ease-out);
+}
+@keyframes slideAlert {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.alert-error { background: var(--danger-soft); color: #991b1b; border: 1px solid #fca5a5; }
+.alert-success { background: var(--success-soft); color: #14532d; border: 1px solid #86efac; }
+.alert-info { background: var(--primary-soft); color: #1e3a8a; border: 1px solid #93c5fd; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 1: GRADEBOOK (دفتر التنقيط)
+═══════════════════════════════════════════════════════════════ */
+#page-gradebook .hero-card {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  color: #fff;
+}
+.hero-title { 
+  font-size: clamp(26px, 4vw, 38px); 
+  font-weight: 800; 
+  margin-bottom: 8px; 
+  line-height: 1.1;
+  position: relative;
+  z-index: 1;
+}
+.hero-sub { 
+  font-size: 14px; 
+  opacity: 0.9; 
+  margin-bottom: 20px; 
+  line-height: 1.7;
+  max-width: 60ch;
+  position: relative;
+  z-index: 1;
+}
+
+.setup-section { display: flex; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
+.setup-section .btn { 
+  background: rgba(255,255,255,0.15); 
+  color: #fff; 
+  border: 2px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(8px);
+}
+.setup-section .btn:hover:not(:disabled) { 
+  background: rgba(255,255,255,0.25); 
+  border-color: rgba(255,255,255,0.5); 
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+/* Gradebook table */
+#gradebook-wrapper {
+  overflow-x: auto;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  transition: box-shadow 0.3s var(--ease-out);
+}
+
+#gradebook-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+}
+
+#gradebook-table th, #gradebook-table td {
+  border: 1px solid var(--border);
+  text-align: center;
+  padding: 6px 8px;
+  min-width: 72px;
+  height: 36px;
+}
+
+#gradebook-table th {
+  background: var(--bg);
+  font-weight: 700;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+#gradebook-table th.term-header {
+  background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+  font-size: 12px;
+  color: var(--text);
+}
+#gradebook-table th.group-exam { background: linear-gradient(135deg, #dbeafe, #eff6ff); color: #1e40af; }
+#gradebook-table th.group-act { background: linear-gradient(135deg, #fef9c3, #fefce8); color: #713f12; }
+
+#gradebook-table td.name-cell {
+  text-align: right;
+  padding-right: 12px;
+  font-weight: 600;
+  min-width: 200px;
+  position: sticky;
+  right: 0;
+  background: #fff;
+  z-index: 1;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.04);
+}
+[dir=ltr] #gradebook-table td.name-cell { text-align: left; padding-left: 12px; left: 0; right: auto; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+
+#gradebook-table th.name-header {
+  min-width: 200px;
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+  box-shadow: -2px 0 8px rgba(0,0,0,0.04);
+}
+[dir=ltr] #gradebook-table th.name-header { left: 0; right: auto; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+
+#gradebook-table input.score-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px;
+  outline: none;
+  color: var(--text);
+  transition: background 0.2s;
+}
+#gradebook-table input.score-input:focus {
+  background: #eff6ff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+#gradebook-table td.score-cell { padding: 0; }
+#gradebook-table td.action-cell { min-width: 50px; }
+#gradebook-table tr { transition: background 0.15s; }
+#gradebook-table tr:hover td { background-color: #f8fafc; }
+#gradebook-table tr:hover td.name-cell { background-color: #f0f9ff; }
+
+.col-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; padding: 4px 6px;
+  border-radius: 6px; transition: all 0.2s;
+}
+.col-btn:hover { background: var(--danger-soft); color: var(--danger); transform: scale(1.1); }
+
+/* Export bar */
+#export-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  transition: box-shadow 0.3s var(--ease-out);
+}
+#export-bar:hover { box-shadow: var(--shadow-lg); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 2: REPORT (التقرير)
+═══════════════════════════════════════════════════════════════ */
+#page-report .hero-card {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #6366f1 100%);
+  color: #fff;
+}
+
+.mode-btn-group { display: flex; gap: 8px; flex-wrap: wrap; position: relative; z-index: 1; }
+.mode-btn {
+  padding: 9px 18px;
+  border-radius: 24px;
+  border: 2px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  font-family: inherit;
+  backdrop-filter: blur(4px);
+}
+.mode-btn:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+.mode-btn:active { transform: translateY(0); }
+.mode-btn.active { 
+  background: rgba(255,255,255,0.25); 
+  border-color: rgba(255,255,255,0.7); 
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+/* Report preview */
+#report-preview {
+  background: #fff;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(30,58,138,0.08);
+}
+
+.report-shell { padding: 20px; font-family: 'Segoe UI', 'Cairo', sans-serif; font-size: 9pt; color: #0f172a; }
+
+.report-header {
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+}
+
+.report-exam-title {
+  text-align: center;
+  font-size: 12pt;
+  font-weight: bold;
+  color: #1e3a8a;
+  margin-bottom: 2px;
+  padding-bottom: 0;
+}
+
+.report-meta-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.meta-flat {
+  padding: 5px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  font-size: 8.5pt;
+  vertical-align: middle;
+}
+.meta-flat-label { color: #64748b; font-weight: 600; }
+.meta-flat-value { color: #0f172a; font-weight: 700; }
+
+.report-stats-table { width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 12px; }
+.stat-card {
+  padding: 10px; color: #fff; border-radius: 8px; text-align: center; width: 25%;
+  transition: transform 0.2s var(--ease-out);
+}
+.stat-card:hover { transform: scale(1.03); }
+.stat-label { font-size: 7pt; opacity: 0.9; }
+.stat-value { font-size: 13pt; font-weight: bold; margin-top: 2px; }
+
+.category-table-container { width: 100%; border-collapse: separate; border-spacing: 6px; margin-bottom: 12px; }
+.category-box { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; vertical-align: top; width: 25%; }
+.category-header { padding: 6px; color: #fff; font-weight: bold; font-size: 8pt; text-align: center; }
+.student-table { width: 100%; border-collapse: collapse; font-size: 7pt; }
+.student-table th, .student-table td { padding: 3px 4px; border-bottom: 1px solid #e2e8f0; text-align: center; }
+.student-table th { background: #f8fafc; font-weight: 700; }
+
+.distribution-container { width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 12px; }
+.pie-cell { width: 35%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; vertical-align: top; }
+.summary-cell { width: 65%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; vertical-align: top; }
+.rpt-section-title { font-size: 9pt; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+
+.pie-canvas-wrap { width: 100px; height: 100px; margin: 8px auto; }
+
+.legend-item { font-size: 7pt; margin-bottom: 3px; display: flex; align-items: center; gap: 5px; }
+.legend-color { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.dist-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+.dist-table th, .dist-table td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; text-align: center; }
+.dist-table th { background: #f8fafc; font-weight: 700; font-size: 7pt; }
+
+.bar-bg { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s var(--ease-out); }
+
+.notes-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.notes-line { border-bottom: 1px dotted #94a3b8; height: 22px; }
+
+.signatures-table { width: 100%; border-collapse: separate; border-spacing: 16px; margin-top: 10px; }
+.sig-cell { width: 100%; text-align: center; font-size: 8pt; }
+.sig-line { border-bottom: 1px solid #000; height: 32px; margin-bottom: 5px; width: 200px; margin-left: auto; margin-right: auto; }
+
+.report-footer { text-align: center; font-size: 7pt; color: #64748b; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 6px; }
+
+/* ── Compact Teacher Panel for Report ── */
+.teacher-panel { 
+  position: relative; 
+  overflow: hidden; 
+  transition: box-shadow 0.3s var(--ease-out);
+}
+.teacher-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary-light), var(--accent));
+  border-radius: 0 4px 4px 0;
+}
+[dir=ltr] .teacher-panel::before {
+  left: 0; right: auto;
+  border-radius: 4px 0 0 4px;
+}
+
+.teacher-panel .section-title { font-size: 13px; margin-bottom: 10px; padding-bottom: 7px; }
+.teacher-panel .input-group { margin-bottom: 10px; }
+.teacher-panel .input-group label { font-size: 10px; margin-bottom: 4px; }
+.teacher-panel .input-group input,
+.teacher-panel .input-group select { padding: 8px 12px; font-size: 12px; }
+.teacher-panel { padding: 16px 20px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE 3: PDF MERGER — MODERN REDESIGN
+═══════════════════════════════════════════════════════════════ */
+#page-merger .hero-card {
+  background: linear-gradient(135deg, #0f766e 0%, #059669 40%, #0d9488 70%, #14b8a6 100%);
+  color: #fff;
+}
+
+/* ── Premium Drop Zone ── */
+#pdf-drop-zone {
+  border: 3px dashed rgba(59,130,246,0.3);
+  border-radius: var(--radius-xl);
+  padding: 60px 32px;
+  text-align: center;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  cursor: pointer;
+  transition: all 0.35s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(59,130,246,0.06);
+}
+#pdf-drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 30% 50%, rgba(59,130,246,0.04) 0%, transparent 60%),
+    radial-gradient(circle at 70% 50%, rgba(15,118,110,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+#pdf-drop-zone:hover, #pdf-drop-zone.drag-over {
+  border-color: var(--primary-light);
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(59,130,246,0.15);
+}
+#pdf-drop-zone.drag-over {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  transform: translateY(-3px) scale(1.01);
+  border-style: solid;
+}
+#pdf-drop-zone .drop-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  transition: all 0.35s var(--ease-spring);
+}
+#pdf-drop-zone:hover .drop-icon-wrapper,
+#pdf-drop-zone.drag-over .drop-icon-wrapper {
+  transform: scale(1.1) rotate(-5deg);
+  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.25));
+}
+#pdf-drop-zone.drag-over .drop-icon-wrapper {
+  transform: scale(1.15) rotate(-8deg);
+}
+#pdf-drop-zone svg { 
+  transition: all 0.35s var(--ease-spring);
+}
+#pdf-drop-zone:hover svg { 
+  transform: translateY(-4px); 
+}
+#pdf-drop-zone h3 { 
+  color: var(--text); 
+  margin-bottom: 6px; 
+  font-size: 18px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+#pdf-drop-zone p { 
+  color: var(--text-muted); 
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+#pdf-drop-zone .drop-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 6px 16px;
+  background: rgba(59,130,246,0.08);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+}
+#pdf-drop-zone.drag-over .drop-hint {
+  background: rgba(59,130,246,0.15);
+  color: var(--primary);
+}
+
+/* ── Premium File List ── */
+#pdf-list { list-style: none; }
+
+.pdf-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  transition: all 0.3s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+  animation: pdfItemIn 0.4s var(--ease-out) both;
+}
+.pdf-item:nth-child(1) { animation-delay: 0.02s; }
+.pdf-item:nth-child(2) { animation-delay: 0.06s; }
+.pdf-item:nth-child(3) { animation-delay: 0.10s; }
+.pdf-item:nth-child(4) { animation-delay: 0.14s; }
+.pdf-item:nth-child(5) { animation-delay: 0.18s; }
+.pdf-item:nth-child(6) { animation-delay: 0.22s; }
+.pdf-item:nth-child(7) { animation-delay: 0.26s; }
+.pdf-item:nth-child(8) { animation-delay: 0.30s; }
+
+@keyframes pdfItemIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
+}
+.pdf-item:hover { 
+  border-color: var(--primary-light); 
+  box-shadow: 0 6px 24px rgba(59,130,246,0.12); 
+  transform: translateX(-3px);
+}
+[dir=ltr] .pdf-item:hover { transform: translateX(3px); }
+.pdf-item:active { transform: scale(0.99); }
+
+.pdf-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.97);
+}
+.pdf-item.drag-over-target {
+  border-color: var(--primary-light);
+  border-style: dashed;
+  background: #eff6ff;
+  transform: translateX(-6px);
+}
+[dir=ltr] .pdf-item.drag-over-target { transform: translateX(6px); }
+
+.pdf-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(59,130,246,0.02), transparent);
+  pointer-events: none;
+}
+.pdf-item-icon { 
+  font-size: 28px; 
+  flex-shrink: 0; 
+  transition: transform 0.3s var(--ease-spring);
+}
+.pdf-item:hover .pdf-item-icon { transform: scale(1.1); }
+.pdf-item-name { 
+  flex: 1; 
+  font-weight: 600; 
+  font-size: 14px; 
+  word-break: break-all;
+  color: var(--text);
+}
+.pdf-item-size { 
+  color: var(--text-muted); 
+  font-size: 12px; 
+  background: var(--bg);
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.pdf-drag-handle { 
+  cursor: grab; 
+  color: #94a3b8; 
+  padding: 0 6px; 
+  font-size: 20px; 
+  transition: color 0.2s;
+  user-select: none;
+}
+.pdf-drag-handle:hover { color: var(--primary-light); }
+.pdf-drag-handle:active { cursor: grabbing; }
+.pdf-remove-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 8px; border-radius: 8px;
+  transition: all 0.25s var(--ease-out); 
+  font-size: 18px; display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pdf-remove-btn:hover { 
+  background: var(--danger-soft); 
+  color: var(--danger); 
+  transform: scale(1.15) rotate(90deg);
+}
+
+/* ── Premium Progress ── */
+#merge-progress {
+  display: none;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  animation: progressIn 0.4s var(--ease-out);
+}
+@keyframes progressIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+#merge-progress .progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+#merge-progress .progress-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#merge-progress-bar-wrap { 
+  background: #e2e8f0; 
+  border-radius: 20px; 
+  height: 10px; 
+  overflow: hidden; 
+  margin-top: 0;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+#merge-progress-bar { 
+  height: 100%; 
+  border-radius: 20px; 
+  width: 0; 
+  transition: width 0.5s var(--ease-out);
+  background: linear-gradient(90deg, var(--secondary), var(--secondary-light));
+  position: relative;
+}
+#merge-progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+#merge-progress-text { 
+  font-size: 13px; 
+  font-weight: 600;
+  color: #166534;
+}
+#merge-progress .file-progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+#merge-progress .spinner-sm {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(21,128,61,0.2);
+  border-top-color: #16a34a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Merge button with pulse animation ── */
+#btn-merge {
+  position: relative;
+}
+#btn-merge:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+  opacity: 0;
+  z-index: -1;
+  animation: mergePulse 2.5s ease-in-out infinite;
+}
+@keyframes mergePulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.04); }
+}
+#btn-merge:not(:disabled):hover::after {
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════════════ */
+#modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.3s;
+}
+#modal-overlay.open { display: flex; }
+#modal-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  animation: modalIn 0.35s var(--ease-out);
+}
+@keyframes modalIn { 
+  from { transform: translateY(24px) scale(0.95); opacity: 0; } 
+  to { transform: none; opacity: 1; } 
+}
+#modal-title { font-size: 22px; font-weight: 700; margin-bottom: 24px; color: var(--primary); }
+#modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT / REPORT PDF STYLES
+═══════════════════════════════════════════════════════════════ */
+@media print {
+  #topnav, #export-bar, .hero-card, #page-gradebook .card:first-child { display: none !important; }
+}
+
+/* RTL/LTR auto */
+[dir=ltr] .input-group input, [dir=ltr] .input-group select { text-align: left; }
+[dir=rtl] .input-group input, [dir=rtl] .input-group select { text-align: right; }
+
+/* Utility */
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-16 { margin-top: 16px; }
+.flex { display: flex; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.flex-1 { flex: 1; }
+.fw-700 { font-weight: 700; }
+.color-muted { color: var(--text-muted); }
+.font-sm { font-size: 12px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MODERN HOME SECTION
+═══════════════════════════════════════════════════════════════ */
+html { scroll-behavior: smooth; }
+
+/* ── Home Hero ── */
+.home-hero {
+  padding: 36px;
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow: 0 24px 60px rgba(30,58,138,0.20);
+}
+.home-hero::before,
+.home-hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.home-hero::before {
+  width: 280px;
+  height: 280px;
+  inset-inline-end: -80px;
+  top: -80px;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%);
+}
+.home-hero::after {
+  width: 200px;
+  height: 200px;
+  inset-inline-start: -60px;
+  bottom: -80px;
+  background: radial-gradient(circle, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0) 70%);
+}
+
+.home-hero-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 28px;
+  align-items: stretch;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.92);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 22px;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s var(--ease-out);
+}
+.hero-badge:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+
+.hero-surface {
+  height: 100%;
+  padding: 24px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.hero-surface-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.hero-surface-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: rgba(255,255,255,0.88);
+  margin-bottom: 18px;
+}
+.hero-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.hero-metric-card {
+  padding: 16px 12px;
+  border-radius: 18px;
+  background: rgba(15,23,42,0.18);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-align: center;
+  transition: all 0.2s var(--ease-out);
+}
+.hero-metric-card:hover {
+  background: rgba(15,23,42,0.25);
+  transform: translateY(-2px);
+}
+.metric-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.metric-label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,0.84);
+}
+
+.home-section {
+  margin: 0 0 24px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.section-title-clean {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -0.3px;
+}
+.section-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ── Feature Cards ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 22px;
+  padding: 26px 24px 24px;
+  box-shadow: 0 16px 40px rgba(15,23,42,0.06);
+  transition: all 0.35s var(--ease-out);
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 50px rgba(15,23,42,0.12);
+  border-color: rgba(59,130,246,0.30);
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  inset-inline-end: -40px;
+  top: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  opacity: 0.10;
+  transition: all 0.4s var(--ease-out);
+}
+.feature-card:hover::before {
+  transform: scale(1.4);
+  opacity: 0.15;
+}
+.feature-card-primary::before { background: #2563eb; }
+.feature-card-secondary::before { background: #7c3aed; }
+.feature-card-success::before { background: #059669; }
+
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  transition: all 0.35s var(--ease-spring);
+}
+.feature-card:hover .feature-icon {
+  transform: scale(1.08) rotate(-3deg);
+}
+.feature-card-primary .feature-icon { background: rgba(37,99,235,0.12); color: #1d4ed8; }
+.feature-card-secondary .feature-icon { background: rgba(124,58,237,0.12); color: #6d28d9; }
+.feature-card-success .feature-icon { background: rgba(5,150,105,0.12); color: #047857; }
+
+.feature-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.feature-desc {
+  min-height: 56px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
+.feature-card .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+  .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .home-hero-inner { grid-template-columns: 1fr; }
+  .hero-surface { margin-top: 12px; }
+}
+
+@media (max-width: 820px) {
+  #topnav {
+    height: auto;
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .nav-tabs,
+  .nav-lang {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .nav-tab {
+    flex: 1 1 140px;
+    justify-content: center;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .container { padding: 20px 16px 32px; }
+  .grid-2,
+  .grid-3,
+  .feature-grid,
+  .hero-metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  #export-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #export-bar > div[style*="flex:1"] {
+    display: none;
+  }
+  #export-bar .btn,
+  .setup-section .btn,
+  .feature-card .btn,
+  .mode-btn,
+  #btn-add-pdf {
+    width: 100%;
+  }
+  .report-meta-table,
+  .report-stats-table,
+  .category-table-container,
+  .distribution-container,
+  .signatures-table {
+    display: block;
+  }
+  .report-meta-table tr,
+  .report-stats-table tr,
+  .category-table-container tr,
+  .distribution-container tr,
+  .signatures-table tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .meta-card,
+  .stat-card,
+  .category-box,
+  .pie-cell,
+  .summary-cell,
+  .sig-cell {
+    width: 100%;
+    display: block;
+  }
+  .pdf-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .home-hero {
+    padding: 24px 18px;
+  }
+  #pdf-drop-zone {
+    padding: 40px 20px;
+  }
+}
+
+@media (max-width: 560px) {
+  body { font-size: 13px; }
+  .card { padding: 18px; }
+  .hero-title { font-size: 26px; }
+  .hero-sub { font-size: 14px; }
+  .hero-badge { width: 100%; justify-content: center; }
+  .nav-tab,
+  .lang-btn { width: 100%; }
+  #modal-box { padding: 22px 18px; }
+  #gradebook-table td.name-cell,
+  #gradebook-table th.name-header { min-width: 160px; }
+  #page-home button.btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .pdf-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .pdf-item-name {
+    font-size: 13px;
+    width: 100%;
+    order: 2;
+  }
+  .pdf-item-size {
+    order: 3;
+  }
+  .pdf-remove-btn {
+    order: 4;
+  }
+  .pdf-drag-handle {
+    order: 1;
+  }
+  .pdf-item-icon {
+    order: 1;
+  }
+  #pdf-drop-zone {
+    padding: 32px 16px;
+  }
+  #pdf-drop-zone h3 {
+    font-size: 16px;
+  }
+  .home-hero {
+    padding: 20px 14px;
+  }
+  .metric-value { font-size: 20px; }
+}
+
+/* ── Scrollbar Styling ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOP NAV ═══════════ -->
+<nav id="topnav">
+  <div class="nav-logo">
+    <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="8" fill="rgba(255,255,255,0.2)"/>
+      <path d="M7 8h14M7 14h10M7 20h12" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="21" cy="20" r="4" fill="#22c55e" stroke="white" stroke-width="1.5"/>
+      <path d="M19.5 20l1 1 2-2" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span id="nav-app-name">EduTrack</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('home')" id="tab-home">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span id="nav-home-label">الرئيسية</span>
+    </button>
+    <button class="nav-tab" onclick="showPage('gradebook')" id="tab-gradebook">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h11"/></svg>
+      <span id="nav-gradebook-label">دفتر التنقيط</span>
+    </button>
+    <button class="nav-tab" onclick="showPage('report')" id="tab-report">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span id="nav-report-label">التقرير</span>
+    </button>
+    <button class="nav-tab" onclick="showPage('merger')" id="tab-merger">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 13H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M15 13h4a2 2 0 002-2V5a2 2 0 00-2-2h-4"/><path d="M12 7v14m0 0l-3-3m3 3l3-3"/></svg>
+      <span id="nav-merger-label">دمج PDF</span>
+    </button>
+  </div>
+  <div class="nav-lang">
+    <button class="lang-btn active" onclick="setLang('ar')">ع</button>
+    <button class="lang-btn" onclick="setLang('fr')">Fr</button>
+    <button class="lang-btn" onclick="setLang('en')">En</button>
+  </div>
+</nav>
+
+<div id="main">
+
+<!-- ═══════════ PAGE 0: HOME ═══════════ -->
+<div id="page-home" class="page active">
+  <div class="container">
+
+    <!-- App intro banner -->
+    <div class="hero-card home-hero" style="background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 50%,#3b82f6 100%);color:#fff;text-align:start;">
+      <div class="home-hero-inner">
+        <div style="position:relative;z-index:1;">
+          <div class="hero-kicker">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span id="home-kicker">منصة الأساتذة الذكية</span>
+          </div>
+          <div class="hero-title">EduTrack</div>
+          <div class="hero-sub" id="home-app-desc">أداة رقمية متكاملة للأساتذة — أنشئ دفتر التنقيط، ولّد تقارير شاملة، وادمج ملفات PDF بكل سهولة من هاتفك أو حاسوبك.</div>
+          <div class="hero-badges">
+            <span class="hero-badge" id="hero-badge-import">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+              استيراد ذكي من Excel
+            </span>
+            <span class="hero-badge" id="hero-badge-report">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              تقارير فورية واضحة
+            </span>
+            <span class="hero-badge" id="hero-badge-pdf">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 13H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M15 13h4a2 2 0 002-2V5a2 2 0 00-2-2h-4"/><path d="M12 7v14m0 0l-3-3m3 3l3-3"/></svg>
+              دمج PDF بدون فقدان الجودة
+            </span>
+          </div>
+          <a href="#" onclick="return false;" style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1e3a8a;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;text-decoration:none;box-shadow:0 6px 24px rgba(0,0,0,0.18);transition:all 0.25s var(--ease-out);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 10px 32px rgba(0,0,0,0.25)';" onmouseout="this.style.transform='';this.style.boxShadow='0 6px 24px rgba(0,0,0,0.18)';">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            <span id="home-download-app">تحميل تطبيق الهاتف</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15V3M6 9l6 6 6-6"/></svg>
+          </a>
+        </div>
+
+        <div class="hero-surface">
+          <div class="hero-surface-title" id="home-surface-title">واجهة حديثة وسريعة</div>
+          <div class="hero-surface-text" id="home-surface-text">أنشئ دفتر التنقيط، ولّد التقارير، وانتقل بين الأدوات الأساسية من واجهة واحدة متجاوبة على الهاتف والحاسوب.</div>
+          <div class="hero-metric-grid">
+            <div class="hero-metric-card">
+              <span class="metric-value">3</span>
+              <span class="metric-label" id="metric-tools-label">أدوات مدمجة</span>
+            </div>
+            <div class="hero-metric-card">
+              <span class="metric-value">✓</span>
+              <span class="metric-label" id="metric-ready-label">جاهزية الترميز</span>
+            </div>
+            <div class="hero-metric-card">
+              <span class="metric-value">100%</span>
+              <span class="metric-label" id="metric-responsive-label">تصميم متجاوب</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features intro -->
+    <div class="section-heading" style="margin-top:8px;">
+      <div>
+        <div class="section-title-clean" id="home-tools-title">ابدأ من المسار المناسب</div>
+        <div class="section-subtitle" id="home-tools-sub">كل أداة في بطاقة مستقلة لتسريع العمل مع الحفاظ على نفس الوظائف الأصلية.</div>
+      </div>
+    </div>
+
+    <!-- Feature cards -->
+    <div class="feature-grid" style="margin-bottom:28px;">
+
+      <article class="feature-card feature-card-primary">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </div>
+        <div class="feature-title" id="feature-gradebook-title">دفتر التنقيط</div>
+        <div class="feature-desc" id="feature-gradebook-desc">استورد أسماء التلاميذ مباشرة من Excel، عدّل الفروض والأنشطة، ثم صدّر العمل إلى PDF أو Excel.</div>
+        <button class="btn btn-primary" type="button" onclick="showPage('gradebook')" style="width:100%;justify-content:center;">
+          <span id="feature-open-gradebook-label">افتح أداة إنشاء دفتر التنقيط</span>
+        </button>
+      </article>
+
+      <article class="feature-card feature-card-secondary">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div class="feature-title" id="feature-report-title">التقرير التحليلي</div>
+        <div class="feature-desc" id="feature-report-desc">استخرج توزيع النتائج وإحصاءات القسم بسرعة، مع معاينة واضحة قابلة للطباعة والتنزيل.</div>
+        <button class="btn btn-outline" type="button" onclick="showPage('report')" style="width:100%;justify-content:center;">
+          <span id="feature-open-report-label">افتح أداة إنشاء التقرير</span>
+        </button>
+      </article>
+
+      <article class="feature-card feature-card-success">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 13H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M15 13h4a2 2 0 002-2V5a2 2 0 00-2-2h-4"/><path d="M12 7v14m0 0l-3-3m3 3l3-3"/></svg>
+        </div>
+        <div class="feature-title" id="feature-merger-title">دمج ملفات PDF</div>
+        <div class="feature-desc" id="feature-merger-desc">رتّب ملفات PDF بالسحب والإفلات، ثم أنشئ ملفاً نهائياً مدموجاً بدون المساس بالمحتوى الأصلي.</div>
+        <button class="btn btn-success" type="button" onclick="showPage('merger')" style="width:100%;justify-content:center;">
+          <span id="feature-open-merger-label">فتح أداة الدمج</span>
+        </button>
+      </article>
+
+    </div>
+
+    <!-- Footer watermark -->
+    <div style="text-align:center;font-size:12px;color:#cbd5e1;padding-bottom:16px;font-weight:600;letter-spacing:0.5px;">EduTrack © 2026</div>
+
+  </div>
+</div><!-- /page-home -->
+
+<!-- ═══════════ PAGE 1: GRADEBOOK ═══════════ -->
+<div id="page-gradebook" class="page">
+  <div class="container">
+
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('home')" style="padding:6px 12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div>
+        <div id="gb-page-title" style="font-size:20px;font-weight:800;color:var(--text);">دفتر التنقيط</div>
+        <div id="gb-page-sub" style="font-size:13px;color:var(--text-muted);">استورد ملف Excel أو ابدأ دفتراً فارغاً</div>
+      </div>
+      <div style="margin-inline-start:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="triggerExcelImport()" id="btn-import-excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+          <span id="btn-import-excel-label">استيراد Excel</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="startBlankGradebook()" id="btn-blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+          <span id="btn-blank-label">دفتر فارغ</span>
+        </button>
+      </div>
+      <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelFile(this)">
+    </div>
+
+    <!-- Teacher info -->
+    <div class="card teacher-panel" style="margin-bottom:16px;">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="gb-teacher-info-title">معلومات الأستاذ</span>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label id="lbl-teacher-name">اسم الأستاذ</label>
+          <input type="text" id="inp-teacher" placeholder="..." oninput="syncTeacherInfo()">
+        </div>
+        <div class="input-group">
+          <label id="lbl-school-name">المؤسسة</label>
+          <input type="text" id="inp-school" placeholder="..." oninput="syncTeacherInfo()">
+        </div>
+        <div class="input-group">
+          <label id="lbl-academic-year">السنة الدراسية</label>
+          <input type="text" id="inp-year" value="2025-2026" oninput="syncTeacherInfo()">
+        </div>
+        <div class="input-group">
+          <label id="lbl-subject">المادة</label>
+          <input type="text" id="inp-subject" placeholder="..." oninput="syncTeacherInfo()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert area -->
+    <div id="gb-alert" class="hidden"></div>
+
+    <!-- Gradebook table area -->
+    <div id="gb-table-area" class="hidden">
+
+      <!-- Export bar -->
+      <div id="export-bar">
+        <span style="font-weight:700;font-size:13px;color:var(--text-muted)" id="gb-students-count"></span>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addStudent()" id="btn-add-student">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          <span id="btn-add-student-label">إضافة تلميذ</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="addExamColumn()" id="btn-add-exam">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          <span id="btn-add-exam-label">إضافة فرض</span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="exportGradebookPDF()" id="btn-export-pdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span id="btn-export-pdf-label">تصدير PDF</span>
+        </button>
+        <button class="btn btn-success btn-sm" onclick="exportGradebookExcel()" id="btn-export-excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span id="btn-export-excel-label">تصدير Excel</span>
+        </button>
+      </div>
+
+      <!-- Scrollable table -->
+      <div id="gradebook-wrapper">
+        <table id="gradebook-table">
+          <thead id="gb-thead"></thead>
+          <tbody id="gb-tbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /page-gradebook -->
+
+<!-- ═══════════ PAGE 2: REPORT ═══════════ -->
+<div id="page-report" class="page">
+  <div class="container">
+
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('home')" style="padding:6px 12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div>
+        <div id="rpt-page-title" style="font-size:20px;font-weight:800;color:var(--text);">التقرير التحليلي</div>
+        <div id="rpt-page-sub" style="font-size:13px;color:var(--text-muted);">تقرير شامل لنتائج التلاميذ</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-card">
+      <div class="hero-title" id="rpt-hero-title">نظام التقارير</div>
+      <div class="hero-sub" id="rpt-hero-sub">استورد ملف Excel للحصول على تقرير شامل لنتائج التلاميذ</div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;opacity:0.8;margin-bottom:8px" id="lbl-analysis-mode">وضع التحليل</div>
+        <div class="mode-btn-group">
+          <button class="mode-btn active" data-mode="averageAll" onclick="setReportMode('averageAll')" id="mode-avg-label">تقرير نتائج  الدورة</button>
+          <button class="mode-btn" data-mode="test1" onclick="setReportMode('test1')" id="mode-t1-label">تقرير الفرض الأول</button>
+          <button class="mode-btn" data-mode="test2" onclick="setReportMode('test2')" id="mode-t2-label">تقرير الفرض التاني</button>
+          <button class="mode-btn" data-mode="test3" onclick="setReportMode('test3')" id="mode-t3-label">تقرير الفرض الثالث </button>
+        </div>
+      </div>
+
+      <div class="setup-section">
+        <button class="btn" onclick="triggerReportExcel()" id="btn-pick-excel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+          <span id="btn-pick-excel-label">اختيار ملف Excel</span>
+        </button>
+        <button class="btn" id="btn-build-preview" onclick="buildReportPreview()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span id="btn-build-preview-label">إنشاء المعاينة</span>
+        </button>
+      </div>
+      <input type="file" id="report-excel-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleReportExcelFile(this)">
+    </div>
+
+    <!-- Teacher info for report -->
+    <div class="card teacher-panel">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="rpt-teacher-info-title">معلومات الأستاذ</span>
+      </div>
+      <div class="grid-3">
+        <div class="input-group">
+          <label id="rpt-lbl-teacher">اسم الأستاذ</label>
+          <input type="text" id="rpt-inp-teacher" placeholder="...">
+        </div>
+        <div class="input-group">
+          <label id="rpt-lbl-school">المؤسسة</label>
+          <input type="text" id="rpt-inp-school" placeholder="...">
+        </div>
+        <div class="input-group">
+          <label id="rpt-lbl-year">السنة الدراسية</label>
+          <input type="text" id="rpt-inp-year" value="2025-2026">
+        </div>
+        <div class="input-group">
+          <label id="rpt-lbl-subject">المادة</label>
+          <input type="text" id="rpt-inp-subject" placeholder="...">
+        </div>
+        <div class="input-group">
+          <label id="rpt-lbl-class">القسم</label>
+          <input type="text" id="rpt-inp-class" placeholder="...">
+        </div>
+        <div class="input-group">
+          <label id="rpt-lbl-exam-num">رقم الفرض</label>
+          <select id="rpt-inp-exam">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="rpt-alert" class="hidden"></div>
+
+    <!-- Report preview -->
+    <div id="rpt-preview-section" class="hidden">
+      <div class="card preview-card" style="padding:0;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:linear-gradient(135deg, #f8fafc, #f1f5f9);border-bottom:1px solid var(--border);">
+          <span style="font-weight:700;font-size:14px;color:var(--primary);" id="rpt-preview-title">معاينة التقرير</span>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary btn-sm" onclick="downloadReportPDF()" id="btn-download-report">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span id="btn-download-report-label">تحميل PDF</span>
+            </button>
+          </div>
+        </div>
+        <div id="report-preview" style="padding:16px;">
+          <!-- Generated report HTML goes here -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /page-report -->
+
+<!-- ═══════════ PAGE 3: PDF MERGER - MODERN REDESIGN ═══════════ -->
+<div id="page-merger" class="page">
+  <div class="container">
+
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('home')" style="padding:6px 12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div>
+        <div id="merger-page-title" style="font-size:20px;font-weight:800;color:var(--text);">دمج ملفات PDF</div>
+        <div id="merger-page-sub" style="font-size:13px;color:var(--text-muted);">رتّب الملفات بالسحب ثم ادمجها في ملف واحد</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-card">
+      <div class="hero-title" id="merger-hero-title">دمج ملفات PDF</div>
+      <div class="hero-sub" id="merger-hero-sub">اختر ملفات PDF، رتّبها بالسحب، ثم أنشئ ملفاً نهائياً مدموجاً بدون تغيير في المحتوى</div>
+      <button class="btn" onclick="triggerPdfPick()" id="btn-add-pdf" style="background:rgba(255,255,255,0.18);color:#fff;border:2px solid rgba(255,255,255,0.35);backdrop-filter:blur(8px);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        <span id="btn-add-pdf-label">إضافة ملفات PDF</span>
+      </button>
+      <input type="file" id="pdf-file-input" accept=".pdf" multiple style="display:none" onchange="handlePdfFiles(this)">
+    </div>
+
+    <div id="merger-alert" class="hidden"></div>
+
+    <!-- Drop zone — premium -->
+    <div id="pdf-drop-zone" onclick="triggerPdfPick()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)">
+      <div class="drop-icon-wrapper">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M12 18v-6"/>
+          <path d="M9 15l3 3 3-3"/>
+          <path d="M9 18V16"/>
+          <path d="M12 19V16"/>
+          <path d="M15 18V16"/>
+        </svg>
+      </div>
+      <h3 id="merger-drop-title">اسحب ملفات PDF هنا أو انقر للاختيار</h3>
+      <p id="merger-drop-sub">يمكنك إضافة ملفات متعددة في آنٍ واحد</p>
+      <div class="drop-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+        <span id="merger-drop-hint">يدعم السحب والإفلات المتعدد</span>
+      </div>
+    </div>
+
+    <!-- File list section -->
+    <div id="pdf-files-section" class="hidden">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <!-- Header bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg, #f8fafc, #f1f5f9);border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="section-title" style="margin:0;border:none;padding:0;font-size:15px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 13H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M15 13h4a2 2 0 002-2V5a2 2 0 00-2-2h-4"/><path d="M12 7v14m0 0l-3-3m3 3l3-3"/></svg>
+              <span id="merger-files-title">الملفات المضافة</span>
+            </span>
+            <span id="pdf-count-badge" class="badge" style="background:var(--primary-soft);color:var(--primary);font-size:11px;"></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="triggerPdfPick()" id="btn-add-more">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span id="btn-add-more-label">إضافة المزيد</span>
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="clearPdfList()" id="btn-clear-list" style="color:var(--danger);border-color:rgba(220,38,38,0.2);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+              <span id="btn-clear-label">مسح الكل</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- File list body -->
+        <div style="padding:18px 22px;">
+          <ul id="pdf-list"></ul>
+
+          <!-- Premium Progress -->
+          <div id="merge-progress">
+            <div class="progress-header">
+              <div class="progress-info">
+                <div class="spinner-sm"></div>
+                <span id="merge-progress-text" style="font-size:14px;font-weight:700;color:#166534;">جاري الدمج...</span>
+              </div>
+              <span id="merge-progress-percent" class="file-progress-label" style="font-weight:700;color:var(--secondary);">0%</span>
+            </div>
+            <div id="merge-progress-bar-wrap">
+              <div id="merge-progress-bar"></div>
+            </div>
+          </div>
+
+          <!-- Merge action -->
+          <div id="merge-action-area" style="margin-top:20px;text-align:center;">
+            <button class="btn btn-success btn-lg" onclick="mergePdfs()" id="btn-merge" style="min-width:280px;padding:16px 36px;font-size:16px;border-radius:14px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 13H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M15 13h4a2 2 0 002-2V5a2 2 0 00-2-2h-4"/><path d="M12 7v14m0 0l-3-3m3 3l3-3"/></svg>
+              <span id="btn-merge-label">دمج الملفات وتحميل النتيجة</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /page-merger -->
+
+</div><!-- /main -->
+
+<!-- ═══════════ MODAL ═══════════ -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal-box">
+    <div id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════════════
+// LOCALISATION (AR / FR / EN)
+// ═══════════════════════════════════════════════════════
+const I18N = {
+  ar: {
+    appName: 'إيديوتراك',
+    navHome: 'الرئيسية',
+    navGradebook: 'دفتر التنقيط',
+    navReport: 'التقرير',
+    navMerger: 'دمج PDF',
+    gbHeroTitle: 'دفتر التنقيط الرقمي',
+    gbHeroSub: 'أدخل معلومات الأستاذ، استورد ملف Excel أو ابدأ دفتراً فارغاً',
+    importExcel: 'استيراد Excel',
+    blankGradebook: 'دفتر فارغ',
+    teacherInfo: 'معلومات الأستاذ',
+    teacherName: 'اسم الأستاذ',
+    schoolName: 'المؤسسة',
+    academicYear: 'السنة الدراسية',
+    subject: 'المادة',
+    addStudent: 'إضافة تلميذ',
+    addExam: 'إضافة فرض',
+    exportPdf: 'تصدير PDF',
+    exportExcel: 'تصدير Excel',
+    rptHeroTitle: 'نظام التقارير',
+    rptHeroSub: 'استورد ملف Excel للحصول على تقرير شامل لنتائج التلاميذ',
+    analysisMode: 'وضع التحليل',
+    modeAvg: 'معدل كل الفروض',
+    modeT1: 'الفرض 1',
+    modeT2: 'الفرض 2',
+    modeT3: 'الفرض 3',
+    pickExcel: 'اختيار ملف Excel',
+    buildPreview: 'إنشاء المعاينة',
+    previewTitle: 'معاينة التقرير',
+    downloadPdf: 'تحميل PDF',
+    className: 'القسم',
+    examNum: 'رقم الفرض',
+    mergerHeroTitle: 'دمج ملفات PDF',
+    mergerHeroSub: 'اختر ملفات PDF، رتّبها بالسحب، ثم أنشئ ملفاً نهائياً',
+    addPdf: 'إضافة ملفات PDF',
+    dropTitle: 'اسحب ملفات PDF هنا أو انقر للاختيار',
+    dropSub: 'يمكنك إضافة ملفات متعددة في آنٍ واحد',
+    dropHint: 'يدعم السحب والإفلات المتعدد',
+    filesTitle: 'الملفات المضافة',
+    addMore: 'إضافة المزيد',
+    clearAll: 'مسح الكل',
+    merge: 'دمج الملفات وتحميل النتيجة',
+    merging: 'جاري الدمج...',
+    gradebook: 'دفتر التنقيط',
+    studentNames: 'أسماء التلاميذ',
+    exams: 'الفروض',
+    activities: 'الأنشطة',
+    term1: 'الفصل الأول',
+    term2: 'الفصل الثاني',
+    notebook: 'الدفتر',
+    homework: 'الواجبات',
+    preparation: 'التحضير',
+    absences: 'الغياب',
+    studentsCount: (n) => `${n} تلميذ`,
+    totalStudents: 'عدد التلاميذ',
+    average: 'معدل القسم',
+    highest: 'أعلى نقطة',
+    lowest: 'أدنى نقطة',
+    excellent: 'ممتاز',
+    good: 'جيد',
+    medium: 'متوسط',
+    weak: 'ضعيف',
+    score: 'النقطة',
+    student: 'التلميذ',
+    summary: 'ملخص',
+    category: 'الفئة',
+    count: 'العدد',
+    visual: 'بيانياً',
+    distribution: 'توزيع النتائج',
+    notes: 'ملاحظات',
+    teacherSig: 'توقيع الأستاذ',
+    examTitle: (n) => ({ '1':'تقرير الفرض الأول','2':'تقرير الفرض الثاني','3':'تقرير الفرض الثالث' }[n] || `تقرير الفرض ${n}`),
+    date: 'التاريخ',
+    rptTeacherInfo: 'معلومات الأستاذ',
+    homeKicker: 'منصة الأساتذة الذكية',
+    heroBadgeImport: 'استيراد ذكي من Excel',
+    heroBadgeReport: 'تقارير فورية واضحة',
+    heroBadgePdf: 'دمج PDF بدون فقدان الجودة',
+    homeSurfaceTitle: 'واجهة حديثة وسريعة',
+    homeSurfaceText: 'أنشئ دفتر التنقيط، ولّد التقارير، وانتقل بين الأدوات الأساسية من واجهة واحدة متجاوبة على الهاتف والحاسوب.',
+    metricTools: 'أدوات مدمجة',
+    metricEncoding: 'جاهزية الترميز',
+    metricResponsive: 'تصميم متجاوب',
+    homeSectionTitle: 'ابدأ من المسار المناسب',
+    homeSectionSub: 'كل أداة في بطاقة مستقلة لتسريع العمل مع الحفاظ على نفس الوظائف الأصلية.',
+    featureGradebookTitle: 'دفتر التنقيط',
+    featureGradebookDesc: 'استورد أسماء التلاميذ مباشرة من Excel، عدّل الفروض والأنشطة، ثم صدّر العمل إلى PDF أو Excel.',
+    featureReportTitle: 'التقرير التحليلي',
+    featureReportDesc: 'استخرج توزيع النتائج وإحصاءات القسم بسرعة، مع معاينة واضحة قابلة للطباعة والتنزيل.',
+    featureMergerTitle: 'دمج ملفات PDF',
+    featureMergerDesc: 'رتّب ملفات PDF بالسحب والإفلات، ثم أنشئ ملفاً نهائياً مدموجاً بدون المساس بالمحتوى الأصلي.',
+    featureOpenGradebook: 'افتح أداة إنشاء دفتر التنقيط',
+    featureOpenReport: 'افتح أداة إنشاء التقرير',
+    featureOpenMerger: 'فتح أداة الدمج',
+    homeAppDesc: 'أداة رقمية متكاملة للأساتذة — أنشئ دفتر التنقيط، ولّد تقارير شاملة، وادمج ملفات PDF بكل سهولة من هاتفك أو حاسوبك.',
+    downloadApp: 'تحميل تطبيق الهاتف',
+    homeToolsTitle: 'ابدأ من المسار المناسب',
+    homeToolsSub: 'كل أداة في بطاقة مستقلة لتسريع العمل مع الحفاظ على نفس الوظائف الأصلية.',
+    gbPageTitle: 'دفتر التنقيط',
+    gbPageSub: 'استورد ملف Excel أو ابدأ دفتراً فارغاً',
+    rptPageTitle: 'التقرير التحليلي',
+    rptPageSub: 'تقرير شامل لنتائج التلاميذ',
+    mergerPageTitle: 'دمج ملفات PDF',
+    mergerPageSub: 'رتّب الملفات بالسحب ثم ادمجها في ملف واحد',
+    filesCount: (n) => `${n} ملف`,
+    mergeSuccess: (n) => `تم دمج ${n} ملفات PDF بنجاح!`,
+    mergeError: 'خطأ في دمج الملفات: ',
+    noData: 'لم يتم العثور على بيانات صالحة في الملف.',
+    importSuccess: (n) => `تم استيراد ${n} تلميذ بنجاح من الملف`,
+    loadSuccess: (n) => `تم تحميل ${n} تلميذ. اضغط "إنشاء المعاينة".`,
+    addMoreFiles: 'يرجى إضافة ملفين PDF على الأقل لإجراء الدمج.',
+  },
+  fr: {
+    appName: 'EduTrack',
+    navHome: 'Accueil',
+    navGradebook: 'Carnet de notes',
+    navReport: 'Rapport',
+    navMerger: 'Fusionner PDF',
+    gbHeroTitle: 'Carnet de notes numérique',
+    gbHeroSub: 'Saisissez les infos enseignant, importez un Excel ou commencez vierge',
+    importExcel: 'Importer Excel',
+    blankGradebook: 'Carnet vierge',
+    teacherInfo: 'Informations enseignant',
+    teacherName: "Nom de l'enseignant",
+    schoolName: 'Établissement',
+    academicYear: 'Année scolaire',
+    subject: 'Matière',
+    addStudent: 'Ajouter un élève',
+    addExam: 'Ajouter contrôle',
+    exportPdf: 'Exporter PDF',
+    exportExcel: 'Exporter Excel',
+    rptHeroTitle: 'Système de rapports',
+    rptHeroSub: "Importez un fichier Excel pour générer un rapport complet",
+    analysisMode: 'Mode de calcul',
+    modeAvg: 'Moyenne de tous',
+    modeT1: 'Contrôle 1',
+    modeT2: 'Contrôle 2',
+    modeT3: 'Contrôle 3',
+    pickExcel: 'Choisir un fichier Excel',
+    buildPreview: 'Générer la prévisualisation',
+    previewTitle: 'Prévisualisation du rapport',
+    downloadPdf: 'Télécharger PDF',
+    className: 'Classe',
+    examNum: 'N° de l\'examen',
+    mergerHeroTitle: 'Fusionner des PDF',
+    mergerHeroSub: 'Choisissez vos PDF, réorganisez-les, puis créez un seul fichier',
+    addPdf: 'Ajouter des PDF',
+    dropTitle: 'Glissez vos PDF ici ou cliquez pour sélectionner',
+    dropSub: 'Vous pouvez ajouter plusieurs fichiers à la fois',
+    dropHint: 'Glisser-déposer multiple supporté',
+    filesTitle: 'Fichiers ajoutés',
+    addMore: 'Ajouter plus',
+    clearAll: 'Tout effacer',
+    merge: 'Fusionner et télécharger',
+    merging: 'Fusion en cours...',
+    gradebook: 'Carnet de notes',
+    studentNames: 'Noms des élèves',
+    exams: 'Contrôles',
+    activities: 'Activités',
+    term1: 'Semestre 1',
+    term2: 'Semestre 2',
+    notebook: 'Cahier',
+    homework: 'Devoirs',
+    preparation: 'Préparation',
+    absences: 'Absences',
+    studentsCount: (n) => `${n} élève(s)`,
+    totalStudents: "Nombre d'élèves",
+    average: 'Moyenne de classe',
+    highest: 'Meilleure note',
+    lowest: 'Plus faible note',
+    excellent: 'Excellent',
+    good: 'Bien',
+    medium: 'Moyen',
+    weak: 'Faible',
+    score: 'Note',
+    student: 'Élève',
+    summary: 'Résumé',
+    category: 'Catégorie',
+    count: 'Nombre',
+    visual: 'Graphique',
+    distribution: 'Distribution',
+    notes: 'Observations',
+    teacherSig: "Signature de l'enseignant",
+    examTitle: (n) => ({ '1':'Rapport du premier examen','2':'Rapport du deuxième examen','3':'Rapport du troisième examen' }[n] || `Rapport examen n°${n}`),
+    date: 'Date',
+    rptTeacherInfo: 'Informations enseignant',
+    homeKicker: 'Plateforme intelligente pour enseignants',
+    heroBadgeImport: 'Import Excel intelligent',
+    heroBadgeReport: 'Rapports clairs en un instant',
+    heroBadgePdf: 'Fusion PDF sans perte de qualité',
+    homeSurfaceTitle: 'Interface moderne et rapide',
+    homeSurfaceText: 'Créez le carnet, générez les rapports et passez d\'un outil à l\'autre depuis une seule interface fluide sur mobile et ordinateur.',
+    metricTools: 'Outils intégrés',
+    metricEncoding: 'Compatibilité UTF-8',
+    metricResponsive: 'Design responsive',
+    homeSectionTitle: 'Commencer par le bon parcours',
+    homeSectionSub: 'Chaque outil est présenté sous forme de carte pour accélérer le travail tout en conservant les fonctionnalités existantes.',
+    featureGradebookTitle: 'Carnet de notes',
+    featureGradebookDesc: 'Importez les élèves depuis Excel, ajustez contrôles et activités, puis exportez vers PDF ou Excel.',
+    featureReportTitle: 'Rapport analytique',
+    featureReportDesc: 'Obtenez rapidement la distribution des résultats et les statistiques de la classe avec une prévisualisation nette.',
+    featureMergerTitle: 'Fusion PDF',
+    featureMergerDesc: 'Réorganisez vos PDF par glisser-déposer puis générez un fichier final sans modifier le contenu original.',
+    featureOpenGradebook: 'Ouvrir le carnet de notes',
+    featureOpenReport: 'Ouvrir le rapport analytique',
+    featureOpenMerger: 'Ouvrir la fusion PDF',
+    homeAppDesc: "Outil numérique complet pour les enseignants — créez le carnet, générez des rapports et fusionnez des PDF depuis votre téléphone ou ordinateur.",
+    downloadApp: "Télécharger l'application",
+    homeToolsTitle: 'Commencer par le bon parcours',
+    homeToolsSub: 'Chaque outil est présenté sous forme de carte pour accélérer le travail.',
+    gbPageTitle: 'Carnet de notes',
+    gbPageSub: 'Importez un fichier Excel ou commencez un carnet vierge',
+    rptPageTitle: 'Rapport analytique',
+    rptPageSub: 'Rapport complet sur les résultats des élèves',
+    mergerPageTitle: 'Fusionner des PDF',
+    mergerPageSub: 'Réorganisez les fichiers par glisser-déposer puis fusionnez-les',
+    filesCount: (n) => `${n} fichier(s)`,
+    mergeSuccess: (n) => `${n} fichiers PDF fusionnés avec succès!`,
+    mergeError: 'Erreur de fusion : ',
+    noData: 'Aucune donnée valide trouvée.',
+    importSuccess: (n) => `${n} élèves importés avec succès`,
+    loadSuccess: (n) => `${n} élèves chargés. Cliquez sur "Générer la prévisualisation".`,
+    addMoreFiles: 'Veuillez ajouter au moins 2 fichiers PDF.',
+  },
+  en: {
+    appName: 'EduTrack',
+    navHome: 'Home',
+    navGradebook: 'Gradebook',
+    navReport: 'Report',
+    navMerger: 'Merge PDF',
+    gbHeroTitle: 'Digital Gradebook',
+    gbHeroSub: 'Enter teacher info, import Excel, or start a blank gradebook',
+    importExcel: 'Import Excel',
+    blankGradebook: 'Blank gradebook',
+    teacherInfo: 'Teacher information',
+    teacherName: 'Teacher name',
+    schoolName: 'School / Institution',
+    academicYear: 'Academic year',
+    subject: 'Subject',
+    addStudent: 'Add student',
+    addExam: 'Add exam',
+    exportPdf: 'Export PDF',
+    exportExcel: 'Export Excel',
+    rptHeroTitle: 'Report System',
+    rptHeroSub: 'Import an Excel file to generate a comprehensive student report',
+    analysisMode: 'Analysis mode',
+    modeAvg: 'Average all exams',
+    modeT1: 'Exam 1',
+    modeT2: 'Exam 2',
+    modeT3: 'Exam 3',
+    pickExcel: 'Choose Excel file',
+    buildPreview: 'Build preview',
+    previewTitle: 'Report preview',
+    downloadPdf: 'Download PDF',
+    className: 'Class',
+    examNum: 'Exam number',
+    mergerHeroTitle: 'Merge PDF Files',
+    mergerHeroSub: 'Choose PDFs, reorder them by dragging, then create a merged file',
+    addPdf: 'Add PDF files',
+    dropTitle: 'Drag PDFs here or click to select',
+    dropSub: 'You can add multiple files at once',
+    dropHint: 'Multi-file drag & drop supported',
+    filesTitle: 'Added files',
+    addMore: 'Add more',
+    clearAll: 'Clear all',
+    merge: 'Merge & Download',
+    merging: 'Merging...',
+    gradebook: 'Gradebook',
+    studentNames: 'Student names',
+    exams: 'Exams',
+    activities: 'Activities',
+    term1: 'Term 1',
+    term2: 'Term 2',
+    notebook: 'Notebook',
+    homework: 'Homework',
+    preparation: 'Preparation',
+    absences: 'Absences',
+    studentsCount: (n) => `${n} student(s)`,
+    totalStudents: 'Total students',
+    average: 'Class average',
+    highest: 'Highest score',
+    lowest: 'Lowest score',
+    excellent: 'Excellent',
+    good: 'Good',
+    medium: 'Average',
+    weak: 'Weak',
+    score: 'Score',
+    student: 'Student',
+    summary: 'Summary',
+    category: 'Category',
+    count: 'Count',
+    visual: 'Chart',
+    distribution: 'Distribution',
+    notes: 'Notes',
+    teacherSig: 'Teacher signature',
+    examTitle: (n) => ({ '1':'First Exam Report','2':'Second Exam Report','3':'Third Exam Report' }[n] || `Exam #${n} Report`),
+    date: 'Date',
+    rptTeacherInfo: 'Teacher information',
+    homeKicker: 'Smart teacher workspace',
+    heroBadgeImport: 'Smart Excel import',
+    heroBadgeReport: 'Instant clear reports',
+    heroBadgePdf: 'Lossless PDF merge',
+    homeSurfaceTitle: 'Modern and fast interface',
+    homeSurfaceText: 'Create the gradebook, generate reports, and move across core tools from one responsive interface on mobile and desktop.',
+    metricTools: 'Built-in tools',
+    metricEncoding: 'UTF-8 ready',
+    metricResponsive: 'Responsive design',
+    homeSectionTitle: 'Start with the right workflow',
+    homeSectionSub: 'Each tool is presented as a focused card so the workflow stays fast without losing existing features.',
+    featureGradebookTitle: 'Gradebook',
+    featureGradebookDesc: 'Import students directly from Excel, edit exams and activities, then export to PDF or Excel.',
+    featureReportTitle: 'Analytics report',
+    featureReportDesc: 'Generate result distribution and class statistics quickly with a clean printable preview.',
+    featureMergerTitle: 'Merge PDF files',
+    featureMergerDesc: 'Reorder PDF files with drag and drop, then produce a final merged file without altering the original content.',
+    featureOpenGradebook: 'Open gradebook tool',
+    featureOpenReport: 'Open report tool',
+    featureOpenMerger: 'Open merge tool',
+    homeAppDesc: 'A complete digital tool for teachers — create gradebooks, generate comprehensive reports, and merge PDF files easily from your phone or computer.',
+    downloadApp: 'Download mobile app',
+    homeToolsTitle: 'Start with the right workflow',
+    homeToolsSub: 'Each tool is presented as a focused card so the workflow stays fast without losing existing features.',
+    gbPageTitle: 'Gradebook',
+    gbPageSub: 'Import an Excel file or start a blank gradebook',
+    rptPageTitle: 'Analytics Report',
+    rptPageSub: 'Comprehensive report on student results',
+    mergerPageTitle: 'Merge PDF Files',
+    mergerPageSub: 'Reorder files by dragging then merge into one',
+    filesCount: (n) => `${n} file(s)`,
+    mergeSuccess: (n) => `Successfully merged ${n} PDF files!`,
+    mergeError: 'Error merging files: ',
+    noData: 'No valid data found in the file.',
+    importSuccess: (n) => `Imported ${n} students successfully`,
+    loadSuccess: (n) => `Loaded ${n} students. Click "Build preview".`,
+    addMoreFiles: 'Please add at least 2 PDF files.',
+  }
+};
+
+let lang = 'ar';
+const t = (key, ...args) => {
+  const v = I18N[lang]?.[key];
+  return typeof v === 'function' ? v(...args) : (v || key);
+};
+
+function setLang(l) {
+  lang = l;
+  document.documentElement.lang = l;
+  document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.lang-btn[onclick="setLang('${l}')"]`).classList.add('active');
+  applyTranslations();
+  if (gbInitialized) renderGradebook();
+  if (pdfFiles.length) renderPdfList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function applyTranslations() {
+  const map = {
+    'nav-home-label': 'navHome',
+    'nav-app-name': 'appName',
+    'nav-gradebook-label': 'navGradebook',
+    'nav-report-label': 'navReport',
+    'nav-merger-label': 'navMerger',
+    'gb-hero-title': 'gbHeroTitle',
+    'gb-hero-sub': 'gbHeroSub',
+    'btn-import-excel-label': 'importExcel',
+    'btn-blank-label': 'blankGradebook',
+    'gb-teacher-info-title': 'teacherInfo',
+    'lbl-teacher-name': 'teacherName',
+    'lbl-school-name': 'schoolName',
+    'lbl-academic-year': 'academicYear',
+    'lbl-subject': 'subject',
+    'btn-add-student-label': 'addStudent',
+    'btn-add-exam-label': 'addExam',
+    'btn-export-pdf-label': 'exportPdf',
+    'btn-export-excel-label': 'exportExcel',
+    'rpt-hero-title': 'rptHeroTitle',
+    'rpt-hero-sub': 'rptHeroSub',
+    'lbl-analysis-mode': 'analysisMode',
+    'mode-avg-label': 'modeAvg',
+    'mode-t1-label': 'modeT1',
+    'mode-t2-label': 'modeT2',
+    'mode-t3-label': 'modeT3',
+    'btn-pick-excel-label': 'pickExcel',
+    'btn-build-preview-label': 'buildPreview',
+    'rpt-preview-title': 'previewTitle',
+    'btn-download-report-label': 'downloadPdf',
+    'rpt-lbl-teacher': 'teacherName',
+    'rpt-lbl-school': 'schoolName',
+    'rpt-lbl-year': 'academicYear',
+    'rpt-lbl-subject': 'subject',
+    'rpt-lbl-class': 'className',
+    'rpt-lbl-exam-num': 'examNum',
+    'merger-hero-title': 'mergerHeroTitle',
+    'merger-hero-sub': 'mergerHeroSub',
+    'btn-add-pdf-label': 'addPdf',
+    'merger-drop-title': 'dropTitle',
+    'merger-drop-sub': 'dropSub',
+    'merger-drop-hint': 'dropHint',
+    'merger-files-title': 'filesTitle',
+    'btn-add-more-label': 'addMore',
+    'btn-clear-label': 'clearAll',
+    'btn-merge-label': 'merge',
+    'home-kicker': 'homeKicker',
+    'hero-badge-import': 'heroBadgeImport',
+    'hero-badge-report': 'heroBadgeReport',
+    'hero-badge-pdf': 'heroBadgePdf',
+    'home-surface-title': 'homeSurfaceTitle',
+    'home-surface-text': 'homeSurfaceText',
+    'metric-tools-label': 'metricTools',
+    'metric-ready-label': 'metricEncoding',
+    'metric-responsive-label': 'metricResponsive',
+    'home-section-title': 'homeSectionTitle',
+    'home-section-sub': 'homeSectionSub',
+    'feature-gradebook-title': 'featureGradebookTitle',
+    'feature-gradebook-desc': 'featureGradebookDesc',
+    'feature-report-title': 'featureReportTitle',
+    'feature-report-desc': 'featureReportDesc',
+    'feature-merger-title': 'featureMergerTitle',
+    'feature-merger-desc': 'featureMergerDesc',
+    'feature-open-gradebook-label': 'featureOpenGradebook',
+    'feature-open-report-label': 'featureOpenReport',
+    'feature-open-merger-label': 'featureOpenMerger',
+    'home-app-desc': 'homeAppDesc',
+    'home-download-app': 'downloadApp',
+    'home-tools-title': 'homeToolsTitle',
+    'home-tools-sub': 'homeToolsSub',
+    'gb-page-title': 'gbPageTitle',
+    'gb-page-sub': 'gbPageSub',
+    'rpt-page-title': 'rptPageTitle',
+    'rpt-page-sub': 'rptPageSub',
+    'merger-page-title': 'mergerPageTitle',
+    'merger-page-sub': 'mergerPageSub',
+  };
+  for (const [id, key] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  }
+  document.title = `EduTrack — ${t('gradebook')}`;
+  updateStudentCount();
+  if (gbInitialized) renderGradebook();
+  if (reportStudents.length > 0 && reportBuilt) buildReportPreview();
+  if (pdfFiles.length) updatePdfCount();
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('tab-' + page).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════
+// ════════ PAGE 1: GRADEBOOK ══════════════════════════
+// ═══════════════════════════════════════════════════════
+
+/* ── State ── */
+let studentNames = [];
+let examColumns = []; // [{id, name, term1: [], term2: []}]
+let activityColumns = []; // [{id, name, term1: [], term2: []}]
+let gbInitialized = false;
+let examCounter = 0;
+let activityCounter = 0;
+
+const DEFAULT_ACTIVITIES_AR = ['الدفتر', 'الواجبات', 'التحضير', 'الغياب'];
+const DEFAULT_ACTIVITIES_FR = ['Cahier', 'Devoirs', 'Préparation', 'Absences'];
+const DEFAULT_ACTIVITIES_EN = ['Notebook', 'Homework', 'Preparation', 'Absences'];
+
+function normalizeText(value) {
+  const base = String(value ?? '')
+    .replace(/\u0000/g, '')
+    .replace(/\u001a/g, '')
+    .replace(/\uFEFF/g, '')
+    .replace(/[\u200E\u200F\u202A-\u202E]/g, '')
+    .replace(/\u00A0/g, ' ');
+  try {
+    return base.normalize('NFC').replace(/[ \t]{2,}/g, ' ').trim();
+  } catch (err) {
+    return base.replace(/[ \t]{2,}/g, ' ').trim();
+  }
+}
+
+function decodeTextBuffer(buffer) {
+  const labels = ['utf-8', 'windows-1256', 'windows-1252', 'iso-8859-1'];
+  let bestText = '';
+  let bestScore = -Infinity;
+  for (const label of labels) {
+    try {
+      const candidate = new TextDecoder(label, { fatal: false }).decode(buffer);
+      const replacements = (candidate.match(/\uFFFD/g) || []).length;
+      const readable = (candidate.match(/[A-Za-zÀ-ÿ0-9ا؀-ۿ#&@_.,:;()\[\]{}%+\-\/\\ ]/g) || []).length;
+      const score = readable - replacements * 40;
+      if (score > bestScore) {
+        bestScore = score;
+        bestText = candidate;
+      }
+    } catch (err) {}
+  }
+  return bestText || new TextDecoder('utf-8').decode(buffer);
+}
+
+function parseCsvRows(text) {
+  const normalized = String(text || '').replace(/\r\n?/g, '\n').replace(/\u0000/g,'').replace(/\u001a/g,'');
+  const delim = detectDelimiter(normalized);
+  return normalized
+    .split('\n')
+    .map(line => splitCsvLine(line, delim).map(normalizeText))
+    .filter(r => r.some(c => String(c || '').trim()));
+}
+
+function getDefaultActivities() {
+  return lang === 'ar' ? DEFAULT_ACTIVITIES_AR : (lang === 'fr' ? DEFAULT_ACTIVITIES_FR : DEFAULT_ACTIVITIES_EN);
+}
+
+function syncTeacherInfo() { /* live sync handled via direct read */ }
+
+function getTeacherInfo() {
+  return {
+    teacherName: normalizeText(document.getElementById('inp-teacher').value),
+    schoolName: normalizeText(document.getElementById('inp-school').value),
+    academicYear: normalizeText(document.getElementById('inp-year').value),
+    subject: normalizeText(document.getElementById('inp-subject').value),
+  };
+}
+
+/* ── Import Excel ── */
+function triggerExcelImport() {
+  document.getElementById('excel-file-input').value = '';
+  document.getElementById('excel-file-input').click();
+}
+
+function handleExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      let bestStudents = [];
+      let bestConfidence = 0;
+      let extractedTeacher = {};
+      const lowerName = file.name.toLowerCase();
+
+      if (lowerName.endsWith('.csv')) {
+        const text = decodeTextBuffer(e.target.result);
+        const rows = parseCsvRows(text);
+        const result = parseGradebookSheet(rows);
+        bestStudents = result.students;
+        bestConfidence = result.confidence;
+        extractedTeacher = result.teacherInfo || {};
+      } else {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array', raw: false, cellText: true, codepage: 65001 });
+        for (const sheetName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }).map(row => row.map(normalizeText));
+          const result = parseGradebookSheet(rows);
+          if (result.confidence > bestConfidence) {
+            bestConfidence = result.confidence;
+            bestStudents = result.students;
+            extractedTeacher = result.teacherInfo || {};
+          }
+        }
+      }
+
+      if (bestConfidence <= 0 || bestStudents.length === 0) {
+        showAlert('gb-alert', t('noData'), 'error');
+        return;
+      }
+
+      if (extractedTeacher.teacherName) document.getElementById('inp-teacher').value = extractedTeacher.teacherName;
+      if (extractedTeacher.schoolName) document.getElementById('inp-school').value = extractedTeacher.schoolName;
+      if (extractedTeacher.subject) document.getElementById('inp-subject').value = extractedTeacher.subject;
+
+      initGradebook(bestStudents);
+      showAlert('gb-alert', `${t('importSuccess', bestStudents.length)}: ${normalizeText(file.name)}`, 'success');
+    } catch (err) {
+      showAlert('gb-alert', 'خطأ في قراءة الملف: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/**
+ * Parse a gradebook sheet from rows[][] - detect name column and score columns.
+ * Starts reading student data from row 17 (0-indexed).
+ */
+function parseGradebookSheet(rows) {
+  const NAME_COL = 3; // column D
+  const DATA_START = 17; // row 18 in Excel
+  if (!Array.isArray(rows) || rows.length <= DATA_START) {
+    return { students: [], teacherInfo: {}, confidence: 0 };
+  }
+
+  const students = [];
+  for (let r = DATA_START; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const name = cleanName(row[NAME_COL] || '');
+    if (!looksLikeName(name)) continue;
+    students.push({ name });
+  }
+
+  const teacherInfo = {};
+  if (rows[8]?.[14]) teacherInfo.teacherName = normalizeText(rows[8][14]);
+  if (rows[6]?.[14]) teacherInfo.schoolName = normalizeText(rows[6][14]);
+  if (rows[10]?.[14]) teacherInfo.subject = normalizeText(rows[10][14]);
+
+  return {
+    students,
+    teacherInfo,
+    confidence: students.length > 0 ? (students.length * 20 + 100) : 0,
+  };
+}
+
+function looksLikeName(v) {
+  if (!v || v.length < 3 || v.length > 80) return false;
+  if (/^\d+$/.test(v)) return false;
+  if (/^[\d.,/\-+%]+$/.test(v)) return false;
+  return true;
+}
+
+function cleanName(v) {
+  return normalizeText(v).replace(/[\t\n\r]+/g,' ').replace(/ {2,}/g,' ').trim();
+}
+
+/* ── Initialize gradebook with student list ── */
+function startBlankGradebook() {
+  initGradebook([{ name: '' }]);
+}
+
+function initGradebook(importedStudents) {
+  studentNames = importedStudents.map(s => s.name);
+  examCounter = 2;
+  activityCounter = 4;
+
+  const n = studentNames.length;
+
+  // Default 2 exam columns
+  examColumns = [
+    { id: 'exam_1', name: lang === 'ar' ? 'فرض 1' : (lang === 'fr' ? 'Contrôle 1' : 'Exam 1'), term1: Array(n).fill(''), term2: Array(n).fill('') },
+    { id: 'exam_2', name: lang === 'ar' ? 'فرض 2' : (lang === 'fr' ? 'Contrôle 2' : 'Exam 2'), term1: Array(n).fill(''), term2: Array(n).fill('') },
+  ];
+
+  // Default activity columns
+  const acts = getDefaultActivities();
+  activityColumns = acts.map((name, i) => ({
+    id: `act_${i+1}`, name,
+    term1: Array(n).fill(''), term2: Array(n).fill('')
+  }));
+
+  gbInitialized = true;
+  renderGradebook();
+  document.getElementById('gb-table-area').classList.remove('hidden');
+}
+
+/* ── Render Table ── */
+function renderGradebook() {
+  if (!gbInitialized) return;
+  renderGradebookHead();
+  renderGradebookBody();
+  updateStudentCount();
+}
+
+function renderGradebookHead() {
+  const examCount = examColumns.length;
+  const actCount = activityColumns.length;
+  const totalCols = examCount + actCount;
+  const isRtl = lang === 'ar';
+
+  let th = '';
+
+  const nameLabel = t('studentNames');
+  const term1 = t('term1');
+  const term2 = t('term2');
+  th += `<tr>
+    <th class="name-header" rowspan="3">${esc(nameLabel)}</th>
+    <th colspan="${totalCols}" class="term-header">${esc(term1)}</th>
+    <th colspan="${totalCols}" class="term-header">${esc(term2)}</th>
+    <th rowspan="3" style="width:40px;"></th>
+  </tr>`;
+
+  let row2 = '<tr>';
+  for (let t_ = 0; t_ < 2; t_++) {
+    if (examCount > 0) row2 += `<th colspan="${examCount}" class="group-exam">${esc(t('exams'))}</th>`;
+    if (actCount > 0)  row2 += `<th colspan="${actCount}" class="group-act">${esc(t('activities'))}</th>`;
+  }
+  row2 += '</tr>';
+  th += row2;
+
+  let row3 = '<tr>';
+  for (let t_ = 0; t_ < 2; t_++) {
+    for (const col of examColumns) {
+      row3 += `<th style="background:linear-gradient(135deg,#dbeafe,#eff6ff);min-width:60px;">
+        ${esc(col.name)}
+        <button class="col-btn" title="حذف" onclick="removeExamCol('${col.id}')">×</button>
+      </th>`;
+    }
+    for (const col of activityColumns) {
+      row3 += `<th style="background:linear-gradient(135deg,#fef9c3,#fefce8);min-width:55px;">
+        ${esc(col.name)}
+        <button class="col-btn" title="حذف" onclick="removeActCol('${col.id}')">×</button>
+      </th>`;
+    }
+  }
+  row3 += '</tr>';
+  th += row3;
+
+  document.getElementById('gb-thead').innerHTML = th;
+}
+
+function renderGradebookBody() {
+  const studentPlaceholder = esc(t('student'));
+  let html = '';
+  for (let si = 0; si < studentNames.length; si++) {
+    html += `<tr>
+      <td class="name-cell">
+        <input type="text" value="${esc(studentNames[si])}" placeholder="${studentPlaceholder}"
+          style="width:100%;border:none;background:transparent;font-size:13px;font-family:inherit;font-weight:600;padding:2px 4px;outline:none;"
+          oninput="studentNames[${si}]=this.value">
+      </td>`;
+
+    // Term 1 exam cols
+    for (const col of examColumns) {
+      const idx = examColumns.indexOf(col);
+      html += `<td class="score-cell" style="background:#eff6ff">
+        <input class="score-input" type="text" value="${esc(col.term1[si]||'')}"
+          oninput="examColumns[${idx}].term1[${si}]=this.value">
+      </td>`;
+    }
+    // Term 1 activity cols
+    for (const col of activityColumns) {
+      const idx = activityColumns.indexOf(col);
+      html += `<td class="score-cell" style="background:#fffbeb">
+        <input class="score-input" type="text" value="${esc(col.term1[si]||'')}"
+          oninput="activityColumns[${idx}].term1[${si}]=this.value">
+      </td>`;
+    }
+    // Term 2 exam cols
+    for (const col of examColumns) {
+      const idx = examColumns.indexOf(col);
+      html += `<td class="score-cell" style="background:#eff6ff">
+        <input class="score-input" type="text" value="${esc(col.term2[si]||'')}"
+          oninput="examColumns[${idx}].term2[${si}]=this.value">
+      </td>`;
+    }
+    // Term 2 activity cols
+    for (const col of activityColumns) {
+      const idx = activityColumns.indexOf(col);
+      html += `<td class="score-cell" style="background:#fffbeb">
+        <input class="score-input" type="text" value="${esc(col.term2[si]||'')}"
+          oninput="activityColumns[${idx}].term2[${si}]=this.value">
+      </td>`;
+    }
+
+    html += `<td class="action-cell">
+      <button class="col-btn" title="حذف التلميذ" onclick="removeStudent(${si})" style="color:var(--danger);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </td></tr>`;
+  }
+  document.getElementById('gb-tbody').innerHTML = html;
+}
+
+function updateStudentCount() {
+  const el = document.getElementById('gb-students-count');
+  if (el && gbInitialized) el.textContent = t('studentsCount', studentNames.length);
+}
+
+/* ── Student/Column management ── */
+function addStudent() {
+  studentNames.push('');
+  for (const col of examColumns) { col.term1.push(''); col.term2.push(''); }
+  for (const col of activityColumns) { col.term1.push(''); col.term2.push(''); }
+  renderGradebook();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#gb-tbody tr:last-child input');
+    if (inputs[0]) inputs[0].focus();
+  }, 50);
+}
+
+function removeStudent(si) {
+  if (studentNames.length <= 1) {
+    studentNames[0] = '';
+    for (const col of [...examColumns, ...activityColumns]) { col.term1[0]=''; col.term2[0]=''; }
+    renderGradebook();
+    return;
+  }
+  studentNames.splice(si, 1);
+  for (const col of [...examColumns, ...activityColumns]) { col.term1.splice(si,1); col.term2.splice(si,1); }
+  renderGradebook();
+}
+
+function addExamColumn() {
+  examCounter++;
+  const n = studentNames.length;
+  const name = lang === 'ar' ? `فرض ${examCounter}` : (lang === 'fr' ? `Contrôle ${examCounter}` : `Exam ${examCounter}`);
+  examColumns.push({ id: `exam_${examCounter}`, name, term1: Array(n).fill(''), term2: Array(n).fill('') });
+  renderGradebook();
+}
+
+function removeExamCol(id) {
+  const idx = examColumns.findIndex(c => c.id === id);
+  if (idx >= 0) { examColumns.splice(idx, 1); renderGradebook(); }
+}
+
+function removeActCol(id) {
+  const idx = activityColumns.findIndex(c => c.id === id);
+  if (idx >= 0) { activityColumns.splice(idx, 1); renderGradebook(); }
+}
+
+/* ── Export PDF (gradebook/daftar) ── */
+function exportGradebookPDF() {
+  const info = getTeacherInfo();
+  const html = buildGradebookHtml(info);
+  printHtml(html, 'دفتر-التنقيط.pdf');
+}
+
+function buildGradebookHtml(info) {
+  const examCount = examColumns.length;
+  const actCount = activityColumns.length;
+  const totalCols = examCount + actCount;
+  const isRtl = lang === 'ar';
+  const dir = isRtl ? 'rtl' : 'ltr';
+  const nameColW = totalCols >= 10 ? 22 : totalCols >= 8 ? 24 : 28;
+  const dataColW = ((100 - nameColW) / (totalCols * 2)).toFixed(2);
+  const fs = totalCols >= 10 ? 6.2 : 6.8;
+  const hfs = totalCols >= 10 ? 6.6 : 7.3;
+
+  const TARGET_ROWS = 35;
+
+  let groupHeaderCells = '';
+  for (let t_ = 0; t_ < 2; t_++) {
+    if (examCount > 0) groupHeaderCells += `<th colspan="${examCount}" class="exam-group">${esc(t('exams'))}</th>`;
+    if (actCount > 0)  groupHeaderCells += `<th colspan="${actCount}" class="act-group">${esc(t('activities'))}</th>`;
+  }
+
+  let colLabelCells = '';
+  for (let t_ = 0; t_ < 2; t_++) {
+    for (const col of examColumns) colLabelCells += `<th style="background:#dbeafe;width:${dataColW}%">${esc(col.name)}</th>`;
+    for (const col of activityColumns) colLabelCells += `<th style="background:#fef9c3;width:${dataColW}%">${esc(col.name)}</th>`;
+  }
+
+  let studentRows = studentNames.map((name, si) => {
+    let cells = `<td class="student-name">${esc(name)}</td>`;
+    for (const col of examColumns) cells += `<td style="background:#eff6ff">${esc(col.term1[si]||'')}</td>`;
+    for (const col of activityColumns) cells += `<td style="background:#fffbeb">${esc(col.term1[si]||'')}</td>`;
+    for (const col of examColumns) cells += `<td style="background:#eff6ff">${esc(col.term2[si]||'')}</td>`;
+    for (const col of activityColumns) cells += `<td style="background:#fffbeb">${esc(col.term2[si]||'')}</td>`;
+    return `<tr>${cells}</tr>`;
+  }).join('\n');
+
+  const emptyCells = `<td class="student-name">&nbsp;</td>${Array(totalCols*2).fill('<td></td>').join('')}`;
+  for (let i = studentNames.length; i < TARGET_ROWS; i++) {
+    studentRows += `<tr>${emptyCells}</tr>`;
+  }
+
+  return `<!DOCTYPE html>
+<html dir="${dir}" lang="${lang}">
+<head><meta charset="UTF-8">
+<style>
+@page { size: A4 portrait; margin: 8mm; }
+* { box-sizing: border-box; }
+body { margin:0; background:#fff; font-family:'Segoe UI','Noto Naskh Arabic',Arial,sans-serif; font-size:${fs}pt; color:#0f172a; width:194mm; }
+.page-header { text-align:center; margin-bottom:6px; padding-bottom:4px; border-bottom:1.5pt solid #cbd5e1; }
+.title { font-size:9pt; font-weight:700; color:#0f172a; margin-top:2px; }
+.header-info { width:100%; border-collapse:collapse; margin:6px 0 8px; font-size:7pt; }
+.header-info td { border:0.5pt solid #cbd5e1; padding:4px 6px; }
+.grade-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:${fs}pt; }
+.grade-table th, .grade-table td { border:0.45pt solid #cbd5e1; text-align:center; padding:0; height:16px; line-height:1.1; }
+.grade-table thead th { font-weight:700; font-size:${hfs}pt; padding:2px 1px; }
+.term-header { background:#e2e8f0; border-bottom:1pt solid #cbd5e1 !important; }
+.exam-group { background:#dbeafe; color:#1e40af; font-size:${(hfs-0.5).toFixed(1)}pt; }
+.act-group { background:#fef9c3; color:#713f12; font-size:${(hfs-0.5).toFixed(1)}pt; }
+.student-name { width:${nameColW}%; text-align:${isRtl?'right':'left'}; padding-${isRtl?'right':'left'}:4px !important; font-weight:600; background:#fff; }
+.footer { margin-top:6px; font-size:6.5pt; text-align:center; border-top:1pt solid #cbd5e1; padding-top:4px; color:#64748b; }
+@media print { tr,td,th { page-break-inside:avoid; } thead { display:table-header-group; } }
+</style>
+</head>
+<body>
+<div class="page-header"><div class="title">${esc(t('gradebook'))}</div></div>
+<table class="header-info">
+  <tr>
+    <td><strong>${esc(t('teacherName'))}:</strong> ${esc(info.teacherName)}</td>
+    <td><strong>${esc(t('subject'))}:</strong> ${esc(info.subject)}</td>
+  </tr>
+  <tr>
+    <td><strong>${esc(t('academicYear'))}:</strong> ${esc(info.academicYear)}</td>
+    <td><strong>${esc(t('schoolName'))}:</strong> ${esc(info.schoolName)}</td>
+  </tr>
+</table>
+<table class="grade-table">
+  <thead>
+    <tr>
+      <th rowspan="3" class="student-name">${esc(t('studentNames'))}</th>
+      <th colspan="${totalCols}" class="term-header">${esc(t('term1'))}</th>
+      <th colspan="${totalCols}" class="term-header">${esc(t('term2'))}</th>
+    </tr>
+    <tr>${groupHeaderCells}</tr>
+    <tr>${colLabelCells}</tr>
+  </thead>
+  <tbody>${studentRows}</tbody>
+</table>
+<div class="footer">${esc(t('gradebook'))} · ${new Date().getFullYear()}</div>
+</body></html>`;
+}
+
+/* ── Export Excel ── */
+function exportGradebookExcel() {
+  const info = getTeacherInfo();
+  const wb = XLSX.utils.book_new();
+  const headers1 = [t('studentNames')];
+  const headers2 = [''];
+  const headers3 = [''];
+  const terms = [t('term1'), t('term2')];
+
+  for (const termLabel of terms) {
+    for (const col of examColumns) { headers1.push(termLabel); headers2.push(t('exams')); headers3.push(col.name); }
+    for (const col of activityColumns) { headers1.push(termLabel); headers2.push(t('activities')); headers3.push(col.name); }
+  }
+
+  const rows = [
+    [`${t('teacherName')}: ${info.teacherName}`, `${t('subject')}: ${info.subject}`],
+    [`${t('schoolName')}: ${info.schoolName}`, `${t('academicYear')}: ${info.academicYear}`],
+    [],
+    headers1, headers2, headers3,
+  ];
+
+  for (let si = 0; si < studentNames.length; si++) {
+    const row = [studentNames[si]];
+    for (const col of examColumns) row.push(col.term1[si] || '');
+    for (const col of activityColumns) row.push(col.term1[si] || '');
+    for (const col of examColumns) row.push(col.term2[si] || '');
+    for (const col of activityColumns) row.push(col.term2[si] || '');
+    rows.push(row);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, t('gradebook'));
+  XLSX.writeFile(wb, 'دفتر-التنقيط.xlsx');
+}
+
+// ═══════════════════════════════════════════════════════
+// ════════ PAGE 2: REPORT ════════════════════════════
+// ═══════════════════════════════════════════════════════
+
+let reportStudents = [];
+let reportMode = 'averageAll';
+let reportFileName = '';
+let reportBuilt = false;
+let reportRawRows = [];
+
+function setReportMode(mode) {
+  reportMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  if (reportRawRows.length > 0) {
+    reportStudents = parseReportSheet(reportRawRows).students;
+    document.getElementById('btn-build-preview').disabled = reportStudents.length === 0;
+  }
+  if (reportStudents.length > 0 && reportBuilt) buildReportPreview();
+}
+
+function triggerReportExcel() {
+  document.getElementById('report-excel-input').value = '';
+  document.getElementById('report-excel-input').click();
+}
+
+function handleReportExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  reportFileName = normalizeText(file.name);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const lowerName = file.name.toLowerCase();
+      let bestRows = [];
+      let bestStudents = [];
+      let bestConf = 0;
+
+      if (lowerName.endsWith('.csv')) {
+        bestRows = parseCsvRows(decodeTextBuffer(e.target.result));
+        bestStudents = parseReportSheet(bestRows).students;
+        bestConf = bestStudents.length;
+      } else {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array', raw: false, cellText: true, codepage: 65001 });
+        for (const sn of wb.SheetNames) {
+          const ws = wb.Sheets[sn];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }).map(row => row.map(normalizeText));
+          const result = parseReportSheet(rows);
+          if (result.confidence > bestConf) {
+            bestConf = result.confidence;
+            bestRows = rows;
+            bestStudents = result.students;
+          }
+
+          if (rows[8]?.[14]) document.getElementById('rpt-inp-teacher').value = normalizeText(rows[8][14]);
+          if (rows[6]?.[14]) document.getElementById('rpt-inp-school').value = normalizeText(rows[6][14]);
+          if (rows[10]?.[14]) document.getElementById('rpt-inp-subject').value = normalizeText(rows[10][14]);
+          if (rows[8]?.[8]) document.getElementById('rpt-inp-class').value = normalizeText(rows[8][8]);
+        }
+      }
+
+      if (bestStudents.length === 0) {
+        showAlert('rpt-alert', t('noData'), 'error');
+        return;
+      }
+
+      reportRawRows = bestRows;
+      reportStudents = parseReportSheet(reportRawRows).students;
+      document.getElementById('btn-build-preview').disabled = reportStudents.length === 0;
+      showAlert('rpt-alert', t('loadSuccess', reportStudents.length), 'success');
+    } catch (err) {
+      showAlert('rpt-alert', 'خطأ: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/**
+ * Parse report sheet — detect name column and score column(s).
+ */
+function parseReportSheet(rows) {
+  const NAME_KEYWORDS = ['student','full name','name','nom','nom et prenom','eleve','élève','اسم','الاسم','اسم التلميذ','إسم التلميذ'];
+  const SCORE_KEYWORDS = ['score','average','avg','moyenne','note','mark','grade','result','résultat','moy','معدل','المعدل','النقطة','نقطة'];
+  const FIXED_SCORE_COLS = [6, 8, 10]; // G, I, K
+
+  let students = tryFixedMapping(rows, FIXED_SCORE_COLS);
+  if (students.length > 0) {
+    return { students, confidence: students.length * 10 + 50 };
+  }
+
+  let nameCol = -1, scoreCol = -1, startRow = 0;
+  for (let r = 0; r < Math.min(rows.length, 10); r++) {
+    let nc = -1, sc = -1;
+    for (let c = 0; c < rows[r].length; c++) {
+      const cell = String(rows[r][c]).toLowerCase().trim();
+      if (nc < 0 && NAME_KEYWORDS.some(k => cell.includes(k))) nc = c;
+      if (sc < 0 && SCORE_KEYWORDS.some(k => cell.includes(k))) sc = c;
+    }
+    if (nc >= 0 && sc >= 0 && nc !== sc) {
+      nameCol = nc; scoreCol = sc; startRow = r + 1;
+      break;
+    }
+  }
+
+  if (nameCol < 0) {
+    const maxCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
+    const nameSig = Array(maxCols).fill(0), scoreSig = Array(maxCols).fill(0);
+    for (const row of rows) {
+      for (let c = 0; c < maxCols; c++) {
+        const v = String(row[c] || '').trim();
+        if (looksLikeName(v)) nameSig[c]++;
+        if (parseScore(v) !== null) scoreSig[c]++;
+      }
+    }
+    let bestN = 0, bestS = 0;
+    for (let c = 0; c < maxCols; c++) {
+      const ns = nameSig[c] * 4 - scoreSig[c];
+      if (ns > bestN) { bestN = ns; nameCol = c; }
+    }
+    for (let c = 0; c < maxCols; c++) {
+      if (c === nameCol) continue;
+      const ss = scoreSig[c] * 4 - nameSig[c];
+      if (ss > bestS) { bestS = ss; scoreCol = c; }
+    }
+  }
+
+  if (nameCol < 0 || scoreCol < 0) return { students: [], confidence: 0 };
+
+  students = [];
+  for (let r = startRow; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const name = cleanName(String(row[nameCol] || '').trim());
+    const score = parseScore(String(row[scoreCol] || ''));
+    if (!looksLikeName(name) || score === null) continue;
+    students.push({ originalIndex: students.length + 1, name, score });
+  }
+  return { students, confidence: students.length * 10 + (startRow > 0 ? 20 : 0) };
+}
+
+function tryFixedMapping(rows, scoreColIndices) {
+  const NAME_COL = 3;
+  const DATA_START = 17;
+  if (rows.length <= DATA_START) return [];
+
+  const students = [];
+  for (let r = DATA_START; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const name = cleanName(String(row[NAME_COL] || '').trim());
+    if (!looksLikeName(name)) continue;
+
+    let score = null;
+    if (reportMode === 'averageAll') {
+      const scores = scoreColIndices.map(c => parseScore(String(row[c] || ''))).filter(s => s !== null);
+      if (scores.length > 0) score = scores.reduce((a, b) => a + b, 0) / scores.length;
+    } else if (reportMode === 'test1') {
+      score = parseScore(String(row[scoreColIndices[0]] || ''));
+    } else if (reportMode === 'test2') {
+      score = parseScore(String(row[scoreColIndices[1]] || ''));
+    } else if (reportMode === 'test3') {
+      score = parseScore(String(row[scoreColIndices[2]] || ''));
+    }
+
+    if (score === null) continue;
+    students.push({ originalIndex: students.length + 1, name, score });
+  }
+  return students;
+}
+
+function parseScore(raw) {
+  const v = raw.trim().replace(',', '.');
+  if (!v) return null;
+  const n = parseFloat(v);
+  if (isNaN(n)) return null;
+  return n;
+}
+
+function detectDelimiter(text) {
+  const first = text.split('\n')[0];
+  const counts = { ',': 0, ';': 0, '\t': 0, '|': 0 };
+  for (const d of Object.keys(counts)) counts[d] = (first.match(new RegExp('\\' + (d === '\t' ? 't' : d === '|' ? '\\|' : d), 'g')) || []).length;
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+}
+
+function splitCsvLine(line, delim) {
+  const cells = []; let buf = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (inQ && line[i+1]==='"') { buf+='"'; i++; } else inQ=!inQ; }
+    else if (!inQ && c === delim) { cells.push(buf); buf=''; }
+    else buf += c;
+  }
+  cells.push(buf);
+  return cells;
+}
+
+/* ── Build Report Preview ── */
+function buildReportPreview() {
+  const info = {
+    teacherName: document.getElementById('rpt-inp-teacher').value,
+    schoolName: document.getElementById('rpt-inp-school').value,
+    academicYear: document.getElementById('rpt-inp-year').value,
+    subject: document.getElementById('rpt-inp-subject').value,
+    className: document.getElementById('rpt-inp-class').value,
+  };
+  const examNum = document.getElementById('rpt-inp-exam').value;
+
+  const excellent = [], good = [], medium = [], weak = [];
+  for (const s of reportStudents) {
+    if (s.score >= 17) excellent.push(s);
+    else if (s.score >= 14) good.push(s);
+    else if (s.score >= 10) medium.push(s);
+    else weak.push(s);
+  }
+
+  const sort = arr => [...arr].sort((a,b) => b.score - a.score || a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: 'base' }));
+  const sections = [
+    { key: 'excellent', label: t('excellent'), color: '#3b82f6', students: sort(excellent) },
+    { key: 'good',      label: t('good'),      color: '#22c55e', students: sort(good)      },
+    { key: 'medium',    label: t('medium'),     color: '#f59e0b', students: sort(medium)    },
+    { key: 'weak',      label: t('weak'),       color: '#ef4444', students: sort(weak)      },
+  ];
+
+  const total = reportStudents.length;
+  const avg = total ? reportStudents.reduce((a,b) => a + b.score, 0) / total : 0;
+  const highest = total ? Math.max(...reportStudents.map(s => s.score)) : 0;
+  const lowest  = total ? Math.min(...reportStudents.map(s => s.score)) : 0;
+  const today = new Date().toISOString().split('T')[0];
+  const isRtl = lang === 'ar';
+  const dir = isRtl ? 'rtl' : 'ltr';
+  const examTitle = t('examTitle', examNum);
+  const modeLabel = { averageAll: t('modeAvg'), test1: t('modeT1'), test2: t('modeT2'), test3: t('modeT3') }[reportMode];
+
+  const maxStudentsInAnyCategory = Math.max(...sections.map(s => s.students.length));
+  let tableFontSize = '7pt';
+  let tableRowPadding = '3px 4px';
+  let tableHeaderPadding = '5px';
+  let categoryHeaderPadding = '6px';
+  if (maxStudentsInAnyCategory > 30) {
+    tableFontSize = '5.2pt';
+    tableRowPadding = '1px 2px';
+    tableHeaderPadding = '2px';
+    categoryHeaderPadding = '3px';
+  } else if (maxStudentsInAnyCategory > 22) {
+    tableFontSize = '5.8pt';
+    tableRowPadding = '1.5px 2px';
+    tableHeaderPadding = '2px';
+    categoryHeaderPadding = '4px';
+  } else if (maxStudentsInAnyCategory > 16) {
+    tableFontSize = '6.4pt';
+    tableRowPadding = '2px 3px';
+    tableHeaderPadding = '3px';
+    categoryHeaderPadding = '5px';
+  }
+
+  const logoUrl = 'https://upload.wikimedia.org/wikipedia/ar/archive/a/af/20231126102448%21%D8%B4%D8%B9%D8%A7%D8%B1_%D9%88%D8%B2%D8%A7%D8%B1%D8%A9_%D8%A7%D9%84%D8%AA%D8%B1%D8%A8%D9%8A%D8%A9_%D8%A7%D9%84%D9%88%D8%B7%D9%86%D9%8A%D8%A9_%D9%88%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%D9%85_%D8%A7%D9%84%D8%A3%D9%88%D9%84%D9%8A_%D9%88%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6%D8%A9.png';
+
+  const categoryBoxes = sections.map(sec => {
+    return `<td class="category-box">
+      <div class="category-header" style="background:${sec.color};padding:${categoryHeaderPadding};font-size:${tableFontSize}">${esc(sec.label)}</div>
+      <table class="student-table" style="font-size:${tableFontSize}">
+        <thead><tr>
+          <th style="padding:${tableHeaderPadding}">رقم</th>
+          <th style="padding:${tableHeaderPadding}">${esc(t('student'))}</th>
+          <th style="padding:${tableHeaderPadding}">${esc(t('score'))}</th>
+        </tr></thead>
+        <tbody>${sec.students.map((s) =>
+          `<tr><td style="padding:${tableRowPadding}">${s.originalIndex}</td><td style="padding:${tableRowPadding}">${esc(s.name)}</td><td style="padding:${tableRowPadding}">${s.score.toFixed(2)}</td></tr>`
+        ).join('')}</tbody>
+      </table>
+    </td>`;
+  }).join('');
+
+  const distRows = sections.map(sec => {
+    const cnt = sec.students.length;
+    const pct = total ? (cnt/total*100).toFixed(1) : '0.0';
+    return `<tr>
+      <td>${esc(sec.label)}</td><td>${cnt}</td><td>${pct}%</td>
+      <td style="width:80px;"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${sec.color}"></div></div></td>
+    </tr>`;
+  }).join('');
+
+  const legend = sections.map(sec => {
+    const cnt = sec.students.length;
+    const pct = total ? (cnt/total*100).toFixed(1) : '0.0';
+    return `<div class="legend-item">
+      <span class="legend-color" style="background:${sec.color}"></span>
+      ${esc(sec.label)}: ${cnt} (${pct}%)
+    </div>`;
+  }).join('');
+
+  const pieSlices = buildPieSvg(sections, total);
+
+  const html = `<div class="report-shell" dir="${dir}">
+  <div class="report-header">
+    <div class="rpt-ministry-logo-wrap">
+      <img src="${logoUrl}" alt="شعار الوزارة" onerror="this.style.display='none'" style="height:76px;width:auto;display:block;margin:0 auto 4px;">
+    </div>
+    <div class="report-exam-title">${esc(modeLabel)}</div>
+    <table class="report-meta-table">
+      <tr>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('schoolName'))} : </span><span class="meta-flat-value">${esc(info.schoolName || '-')}</span></td>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('subject'))} : </span><span class="meta-flat-value">${esc(info.subject || '-')}</span></td>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('academicYear'))} : </span><span class="meta-flat-value">${esc(info.academicYear || '-')}</span></td>
+      </tr>
+      <tr>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('teacherName'))} : </span><span class="meta-flat-value">${esc(info.teacherName || '-')}</span></td>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('className'))} : </span><span class="meta-flat-value">${esc(info.className || '-')}</span></td>
+        <td class="meta-flat"><span class="meta-flat-label">${esc(t('date'))} : </span><span class="meta-flat-value">${today}</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <table class="report-stats-table">
+    <tr>
+      <td class="stat-card" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)"><div class="stat-label">${esc(t('totalStudents'))}</div><div class="stat-value">${total}</div></td>
+      <td class="stat-card" style="background:linear-gradient(135deg,#0f766e,#14b8a6)"><div class="stat-label">${esc(t('average'))}</div><div class="stat-value">${avg.toFixed(2)}</div></td>
+      <td class="stat-card" style="background:linear-gradient(135deg,#9333ea,#a78bfa)"><div class="stat-label">${esc(t('highest'))}</div><div class="stat-value">${highest.toFixed(2)}</div></td>
+      <td class="stat-card" style="background:linear-gradient(135deg,#dc2626,#f87171)"><div class="stat-label">${esc(t('lowest'))}</div><div class="stat-value">${lowest.toFixed(2)}</div></td>
+    </tr>
+  </table>
+
+  <table class="category-table-container">
+    <tr>${categoryBoxes}</tr>
+  </table>
+
+  <table class="distribution-container">
+    <tr>
+      <td class="pie-cell">
+        <div class="rpt-section-title">${esc(t('distribution'))}</div>
+        <div style="text-align:center;margin:8px 0">${pieSlices}</div>
+      </td>
+      <td class="summary-cell">
+        <div class="rpt-section-title">${esc(t('summary'))}</div>
+        <table class="dist-table">
+          <thead><tr>
+            <th>${esc(t('category'))}</th>
+            <th>${esc(t('count'))}</th>
+            <th>%</th>
+            <th>${esc(t('visual'))}</th>
+          </tr></thead>
+          <tbody>${distRows}</tbody>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="notes-card">
+    <div class="rpt-section-title">${esc(t('notes'))}</div>
+    <div class="notes-line"></div>
+    <div class="notes-line"></div>
+    <div class="notes-line"></div>
+  </div>
+
+  <div class="report-footer">EduTrack</div>
+</div>`;
+
+  document.getElementById('report-preview').innerHTML = html;
+  document.getElementById('rpt-preview-section').classList.remove('hidden');
+  reportBuilt = true;
+}
+
+function buildPieSvg(sections, total) {
+  if (total === 0) return `<svg width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#e2e8f0"/></svg>`;
+  const r = 45, cx = 50, cy = 50;
+  let paths = '';
+  let currentAngle = -Math.PI / 2;
+
+  for (const sec of sections) {
+    const frac = sec.students.length / total;
+    if (frac === 0) continue;
+    const angle = frac * 2 * Math.PI;
+    const endAngle = currentAngle + angle;
+    const x1 = cx + r * Math.cos(currentAngle);
+    const y1 = cy + r * Math.sin(currentAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const largeArc = angle > Math.PI ? 1 : 0;
+    paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${sec.color}" stroke="#fff" stroke-width="1"/>`;
+    currentAngle = endAngle;
+  }
+  return `<svg width="100" height="100" viewBox="0 0 100 100">${paths}</svg>`;
+}
+
+/* ── Download Report as PDF ── */
+function downloadReportPDF() {
+  const info = {
+    teacherName: document.getElementById('rpt-inp-teacher').value,
+    schoolName: document.getElementById('rpt-inp-school').value,
+    academicYear: document.getElementById('rpt-inp-year').value,
+    subject: document.getElementById('rpt-inp-subject').value,
+    className: document.getElementById('rpt-inp-class').value,
+  };
+  const examNum = document.getElementById('rpt-inp-exam').value;
+  const previewEl = document.getElementById('report-preview');
+  const htmlContent = `<!DOCTYPE html><html lang="${lang}" dir="${lang==='ar'?'rtl':'ltr'}">
+<head><meta charset="UTF-8">
+<style>
+@page { size: A4 portrait; margin: 10mm; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:'Segoe UI','Cairo','Noto Naskh Arabic',Arial,sans-serif; font-size:9pt; color:#0f172a; }
+${getReportPrintStyles()}
+</style>
+</head>
+<body>${previewEl.innerHTML}</body></html>`;
+  printHtml(htmlContent, `تقرير-الفرض-${examNum}.pdf`);
+}
+
+function getReportPrintStyles() {
+  return `
+.report-shell { width:100%; }
+.report-header { border:1.5px solid #1e3a8a; border-radius:10px; padding:10px; margin-bottom:10px; background:#f8fafc; }
+.rpt-ministry-logo-wrap { text-align:center; margin-bottom:6px; }
+.report-exam-title { text-align:center; font-size:13pt; font-weight:bold; color:#1e3a8a; margin-bottom:8px; }
+.report-meta-table { width:100%; border-collapse:collapse; margin-top:6px; }
+.meta-flat { padding:4px 6px; border-bottom:1px solid #e2e8f0; white-space:nowrap; font-size:8pt; vertical-align:middle; }
+.meta-flat-label { color:#64748b; font-weight:600; }
+.meta-flat-value { color:#0f172a; font-weight:700; }
+.report-stats-table { width:100%; border-collapse:separate; border-spacing:8px; margin-bottom:10px; }
+.stat-card { padding:8px; color:#fff; border-radius:8px; text-align:center; width:25%; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.stat-label { font-size:7pt; opacity:0.9; }
+.stat-value { font-size:12pt; font-weight:bold; margin-top:2px; }
+.category-table-container { width:100%; border-collapse:separate; border-spacing:5px; margin-bottom:10px; }
+.category-box { border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; vertical-align:top; width:25%; }
+.category-header { color:#fff; font-weight:bold; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.student-table { width:100%; border-collapse:collapse; }
+.student-table th, .student-table td { border-bottom:1px solid #e2e8f0; text-align:center; }
+.student-table th { background:#f8fafc; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.distribution-container { width:100%; border-collapse:separate; border-spacing:8px; margin-bottom:10px; }
+.pie-cell { width:35%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; vertical-align:top; }
+.summary-cell { width:65%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; vertical-align:top; }
+.rpt-section-title { font-size:9pt; font-weight:bold; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:3px; }
+.legend-item { font-size:7pt; margin-bottom:2px; display:flex; align-items:center; gap:5px; }
+.legend-color { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dist-table { width:100%; border-collapse:collapse; font-size:8pt; }
+.dist-table th, .dist-table td { padding:5px; border-bottom:1px solid #e2e8f0; text-align:center; }
+.bar-bg { width:100%; height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.notes-card { border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:10px; }
+.notes-line { border-bottom:1px dotted #94a3b8; height:20px; }
+.report-footer { text-align:center; font-size:8pt; color:#94a3b8; font-weight:600; margin-top:10px; border-top:1px solid #e2e8f0; padding-top:4px; }
+`;
+}
+
+// ═══════════════════════════════════════════════════════
+// ════════ PAGE 3: PDF MERGER - MODERN ═══════════════
+// ═══════════════════════════════════════════════════════
+
+let pdfFiles = []; // [{name, size, bytes: ArrayBuffer}]
+let dragSrcIndex = null;
+
+function triggerPdfPick() {
+  document.getElementById('pdf-file-input').value = '';
+  document.getElementById('pdf-file-input').click();
+}
+
+async function handlePdfFiles(input) {
+  const files = Array.from(input.files);
+  for (const file of files) {
+    const bytes = await file.arrayBuffer();
+    pdfFiles.push({ name: file.name, size: file.size, bytes });
+  }
+  renderPdfList();
+  updatePdfCount();
+}
+
+function handleDragOver(e) { 
+  e.preventDefault(); 
+  e.currentTarget.classList.add('drag-over'); 
+  const dz = document.getElementById('pdf-drop-zone');
+  const hint = dz.querySelector('.drop-hint');
+  if (hint) hint.textContent = lang === 'ar' ? 'أفلت الملفات للبدء!' : lang === 'fr' ? 'Relâchez pour ajouter!' : 'Drop to add!';
+}
+function handleDragLeave(e) { 
+  e.currentTarget.classList.remove('drag-over');
+  const dz = document.getElementById('pdf-drop-zone');
+  const hint = dz.querySelector('.drop-hint');
+  if (hint) hint.textContent = t('dropHint');
+}
+async function handleDrop(e) {
+  e.preventDefault();
+  const dz = document.getElementById('pdf-drop-zone');
+  dz.classList.remove('drag-over');
+  const hint = dz.querySelector('.drop-hint');
+  if (hint) hint.textContent = t('dropHint');
+  
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (files.length === 0) {
+    showAlert('merger-alert', lang === 'ar' ? 'يرجى إضافة ملفات PDF فقط.' : lang === 'fr' ? 'Veuillez ajouter des fichiers PDF uniquement.' : 'Please add PDF files only.', 'error');
+    return;
+  }
+  for (const file of files) {
+    const bytes = await file.arrayBuffer();
+    pdfFiles.push({ name: file.name, size: file.size, bytes });
+  }
+  renderPdfList();
+  updatePdfCount();
+  showAlert('merger-alert', lang === 'ar' ? `تم إضافة ${files.length} ملفات PDF.` : lang === 'fr' ? `${files.length} fichiers PDF ajoutés.` : `Added ${files.length} PDF files.`, 'success');
+}
+
+function updatePdfCount() {
+  const badge = document.getElementById('pdf-count-badge');
+  if (badge && pdfFiles.length > 0) {
+    badge.textContent = t('filesCount', pdfFiles.length);
+  }
+}
+
+function renderPdfList() {
+  const hasFiles = pdfFiles.length > 0;
+  document.getElementById('pdf-drop-zone').style.display = hasFiles ? 'none' : '';
+  document.getElementById('pdf-files-section').classList.toggle('hidden', !hasFiles);
+  updatePdfCount();
+  
+  if (!hasFiles) return;
+
+  const ul = document.getElementById('pdf-list');
+  // Re-create list with fresh animations by setting innerHTML
+  ul.innerHTML = pdfFiles.map((f, i) => `
+    <li class="pdf-item" draggable="true" ondragstart="pdfDragStart(event, ${i})" ondragover="pdfDragOver(event, ${i})" ondrop="pdfDrop(event, ${i})" ondragend="pdfDragEnd(event)">
+      <span class="pdf-drag-handle" title="اسحب لإعادة الترتيب">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h.01M16 6h.01M8 12h.01M16 12h.01M8 18h.01M16 18h.01"/></svg>
+      </span>
+      <span class="pdf-item-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+      </span>
+      <span class="pdf-item-name">${esc(f.name)}</span>
+      <span class="pdf-item-size">${formatBytes(f.size)}</span>
+      <button class="pdf-remove-btn" onclick="removePdf(${i})" title="حذف">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </li>
+  `).join('');
+}
+
+function removePdf(i) { 
+  pdfFiles.splice(i, 1); 
+  renderPdfList(); 
+  updatePdfCount();
+  if (pdfFiles.length === 0) {
+    showAlert('merger-alert', '', 'clear');
+  }
+}
+function clearPdfList() { 
+  pdfFiles = []; 
+  renderPdfList(); 
+  showAlert('merger-alert', '', 'clear');
+}
+
+/* ── Drag-to-reorder with visual feedback ── */
+function pdfDragStart(e, i) { 
+  dragSrcIndex = i; 
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+function pdfDragOver(e, i) { 
+  e.preventDefault(); 
+  e.dataTransfer.dropEffect = 'move';
+  // Highlight target
+  document.querySelectorAll('.pdf-item').forEach(el => el.classList.remove('drag-over-target'));
+  if (dragSrcIndex !== i) {
+    e.currentTarget.classList.add('drag-over-target');
+  }
+}
+function pdfDrop(e, i) {
+  e.preventDefault();
+  document.querySelectorAll('.pdf-item').forEach(el => el.classList.remove('drag-over-target', 'dragging'));
+  if (dragSrcIndex === null || dragSrcIndex === i) return;
+  const moved = pdfFiles.splice(dragSrcIndex, 1)[0];
+  pdfFiles.splice(i, 0, moved);
+  dragSrcIndex = null;
+  renderPdfList();
+  updatePdfCount();
+}
+function pdfDragEnd(e) { 
+  document.querySelectorAll('.pdf-item').forEach(el => el.classList.remove('dragging', 'drag-over-target'));
+  dragSrcIndex = null; 
+}
+
+/**
+ * Merge PDFs using PDF-Lib.
+ */
+async function mergePdfs() {
+  if (pdfFiles.length < 2) {
+    showAlert('merger-alert', t('addMoreFiles'), 'error');
+    return;
+  }
+
+  const mergeBtn = document.getElementById('btn-merge');
+  const progressDiv = document.getElementById('merge-progress');
+  const progressBar = document.getElementById('merge-progress-bar');
+  const progressText = document.getElementById('merge-progress-text');
+  const progressPercent = document.getElementById('merge-progress-percent');
+  const actionArea = document.getElementById('merge-action-area');
+
+  mergeBtn.disabled = true;
+  progressDiv.style.display = 'block';
+  actionArea.style.display = 'none';
+  progressBar.style.width = '0%';
+  showAlert('merger-alert', '', 'clear');
+
+  try {
+    const mergedPdf = await PDFLib.PDFDocument.create();
+    const totalFiles = pdfFiles.length;
+
+    for (let i = 0; i < totalFiles; i++) {
+      const pct = Math.round((i / totalFiles) * 90);
+      progressBar.style.width = pct + '%';
+      progressPercent.textContent = pct + '%';
+      progressText.textContent = `${t('merging')} (${i+1}/${totalFiles})`;
+
+      const srcPdf = await PDFLib.PDFDocument.load(pdfFiles[i].bytes, { ignoreEncryption: true });
+      const pageIndices = srcPdf.getPageIndices();
+      const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndices);
+      for (const page of copiedPages) {
+        mergedPdf.addPage(page);
+      }
+
+      // Small delay for smooth progress animation
+      await new Promise(r => setTimeout(r, 30));
+    }
+
+    progressBar.style.width = '95%';
+    progressPercent.textContent = '95%';
+    progressText.textContent = t('merging');
+
+    const mergedBytes = await mergedPdf.save();
+    progressBar.style.width = '100%';
+    progressPercent.textContent = '100%';
+    progressText.textContent = lang === 'ar' ? 'تم الدمج بنجاح ✓' : lang === 'fr' ? 'Fusion réussie ✓' : 'Merge complete ✓';
+
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = lang === 'ar' ? 'ملفات-مدموجة.pdf' : lang === 'fr' ? 'fichiers-fusionnes.pdf' : 'merged-files.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    showAlert('merger-alert', t('mergeSuccess', totalFiles), 'success');
+    
+    // Auto-hide progress after delay
+    setTimeout(() => {
+      progressDiv.style.display = 'none';
+      actionArea.style.display = 'block';
+      mergeBtn.disabled = false;
+    }, 1500);
+  } catch (err) {
+    showAlert('merger-alert', t('mergeError') + err.message, 'error');
+    console.error(err);
+    mergeBtn.disabled = false;
+    progressDiv.style.display = 'none';
+    actionArea.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+
+function esc(str) {
+  if (str == null) return '';
+  return normalizeText(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(2) + ' MB';
+}
+
+function showAlert(containerId, message, type) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!message || type === 'clear') { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  const icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+  const cls = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+  el.innerHTML = `<div class="alert ${cls}"><span>${icon}</span><span>${esc(message)}</span></div>`;
+  el.classList.remove('hidden');
+  if (type !== 'error') {
+    setTimeout(() => {
+      el.classList.add('hidden');
+    }, 5000);
+  }
+}
+
+/**
+ * Print/Save as PDF using the browser's print dialog.
+ */
+function printHtml(html, filename) {
+  const win = window.open('', '_blank');
+  if (!win) { 
+    alert(lang === 'ar' ? 'الرجاء السماح بالنوافذ المنبثقة' : lang === 'fr' ? 'Veuillez autoriser les popups' : 'Please allow popups'); 
+    return; 
+  }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => {
+    win.print();
+  }, 500);
+}
+
+/* ── Modal ── */
+function openModal(title, bodyHtml, actions) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-actions').innerHTML = actions || '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  applyTranslations();
+});
+</script>
+</body>
+            </html>
